@@ -21,7 +21,7 @@
 html,body{margin:0;height:100%;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto;}
 model-viewer{width:100%;height:100vh;display:block;background:radial-gradient(1200px 700px at 50% 25%, rgba(255,255,255,.07), rgba(0,0,0,.92));}
 
-/* Tiny top bar */
+/* Top bar */
 .topbar{
   position:fixed; left:8px; right:8px; top:8px;
   display:flex; justify-content:space-between; gap:8px; align-items:center;
@@ -48,23 +48,29 @@ model-viewer{width:100%;height:100vh;display:block;background:radial-gradient(12
 }
 .btn:active{transform:scale(.97)}
 
-/* ✅ BIG menu button */
+/* ✅ BIG RED menu button */
 #togglePanel{
-  font-size:18px;              /* bigger icon */
-  padding:12px 14px;           /* bigger hitbox */
-  border-radius:14px;
+  font-size:22px;
+  padding:14px 18px;
+  min-width:56px;
+  min-height:56px;
+  border-radius:16px;
   line-height:1;
-  min-width:48px;              /* touch-friendly */
-  min-height:48px;
   display:flex;
   align-items:center;
   justify-content:center;
+
+  background:#e53935;
+  border:1px solid rgba(255,255,255,.28);
+  box-shadow: 0 10px 28px rgba(229,57,53,.35);
 }
+#togglePanel:hover{background:#ff3b30;}
+#togglePanel:active{transform:scale(.98);}
 
 /* Collapsible panel */
 .panel{
   position:fixed;
-  left:8px; right:8px; top:60px;
+  left:8px; right:8px; top:68px;
   z-index:25;
   pointer-events:auto;
   background:var(--panel);
@@ -88,7 +94,7 @@ input[type="range"]{flex:1;height:22px;}
 .value{font-size:11px;width:64px;text-align:right;color:var(--muted);}
 
 @media (min-width: 900px){
-  .panel{left:12px;right:auto;top:72px;width:520px}
+  .panel{left:12px;right:auto;top:84px;width:520px}
   .topbar{left:12px;right:12px;top:12px}
 }
 </style>
@@ -101,7 +107,6 @@ input[type="range"]{flex:1;height:22px;}
     <span class="pill"><span id="mDot" class="dot"></span><span id="mTxt">Lädt…</span></span>
     <span class="pill"><span id="pDot" class="dot"></span><span id="pTxt">Pano: prüfen…</span></span>
   </div>
-  <!-- ✅ Icon bigger -->
   <button id="togglePanel" class="btn" type="button" aria-label="Menü">☰</button>
 </div>
 
@@ -109,7 +114,7 @@ input[type="range"]{flex:1;height:22px;}
   <div class="header">
     <div>
       <div class="title">HAUS TAINACH · 360°</div>
-      <div class="subtitle">Pano Toggle</div>
+      <div class="subtitle">Pano Toggle · Scale/Yaw/Zoom/FOV</div>
     </div>
     <div class="row" style="margin-top:0">
       <button id="reset" class="btn" type="button">Reset</button>
@@ -279,7 +284,7 @@ mv.addEventListener("load", async () => {
   mDot.className = "dot ok";
   mTxt.textContent = "Modell bereit";
 
-  yaw.value = "-90"; // startwert fix
+  yaw.value = "-90"; // Startwert fix
   updateAll();
 
   pDot.className = "dot";
