@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>HAUS TAINACH – 360° Panorama + 3D</title>
+  <script type="module" src="https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#07080a; --panel: rgba(18,18,20,.74); --stroke: rgba(255,255,255,.14);
+      --txt:#fff; --muted: rgba(255,255,255,.72);
+      --good:#4be37a; --warn:#f7c948; --bad:#ff5d5d;
+      --r:16px; --shadow: 0 18px 55px rgba(0,0,0,.60);
+    }
+    html,body{margin:0;height:100%;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+    model-viewer{width:100%;height:100vh;display:block;background:radial-gradient(1200px 700px at 50% 25%, rgba(255,255,255,.07), rgba(0,0,0,.92));}
+    .ui{position:fixed;left:12px;top:12px;right:12px;display:flex;gap:12px;pointer-events:none;z-index:20;}
+    .panel{pointer-events:auto;background:var(--panel);border:1px solid var(--stroke);border-radius:var(--r);box-shadow:var(--shadow);backdrop-filter:blur(10px);padding:12px;max-width:min(720px,100%);color:var(--txt);}
+    .title{display:flex;align-items:baseline;gap:10px;font-weight:900;letter-spacing:.2px}
+    .subtitle{font-weight:700;opacity:.65}
+    .sub{margin:6px 0 10px;color:var(--muted);font-size:12px;line-height:1.25;}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+    .pill{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:7px 10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:var(--muted);font-size:12px;user-select:none;}
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--warn);}
+    .dot.ok{background:var(--good);} .dot.bad{background:var(--bad);}
+    button,input[type="range"]{appearance:none;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.10);color:#fff;border-radius:12px;padding:9px 10px;font-size:12px;cursor:pointer;pointer-events:auto;outline:none;}
+    button:hover{background:rgba(255,255,255,.14)} button:active{transform:translateY(1px)}
+    .slab{display:flex;gap:10px;align-items:center;width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:10px;margin-top:10px;}
+    .slab label{color:var(--muted);font-size:12px;min-width:92px;}
+    input[type="range"]{width:min(320px,52vw);padding:0;height:34px;}
+    .val{margin-left:auto}
+    @media (max-width:520px){.ui{left:10px;right:10px;top:10px}input[type="range"]{width:100%}.slab{flex-direction:column;align-items:stretch}.slab label{min-width:auto}.val{margin-left:0}}
+  </style>
+</head>
+
+<body>
+  <div class="ui">
+    <div class="panel">
+      <div class="title">HAUS TAINACH <span class="subtitle">· 360° Panorama + 3D</span></div>
+      <div class="sub">
+        Dateien im Repo-Root: <b>HAUS_TAINACH.glb</b> &nbsp;|&nbsp; <b>TAINACH_PANO.jpg</b> (2:1 equirectangular).
+      </div>
+
+      <div class="row" style="margin-bottom:10px">
+        <span class="pill"><span id="mDot" class="dot"></span><span id="mTxt">Lädt Modell…</span></span>
+        <span class="pill"><span id="pDot" class="dot"></span><span id="pTxt">Panorama prüfen…</span></span>
+      </div>
+
+      <div class="row">
+        <button id="reset" type="button">Kamera Reset</button>
+        <button id="rotate" type="button">Auto-Rotate: AN</button>
+        <button id="fs" type="button">Fullscreen</button>
+      </div>
+
+      <div class="slab">
+        <label>Scale</label>
+        <input id="scale" type="range" min="1" max="50" step="1" value="5" />
+        <span class="pill val"><span id="scVal">5</span>x</span>
+      </div>
+
+      <div class="slab">
+        <label>Yaw</label>
+        <input id="yaw" type="range" min="-180" max="180" step="1" value="0" />
+        <span class="pill val"><span id="yawVal">0</span>°</span>
+      </div>
+    </div>
+  </div>
+
+  <model-viewer
+    id="mv"
+    src="HAUS_TAINACH.glb"
+
+    camera-controls
+    auto-rotate
+    rotation-per-second="10deg"
+    interaction-prompt="none"
+    loading="eager"
+    reveal="auto"
+
+    tone-mapping="aces"
+    exposure="1.10"
+    shadow-intensity="0.90"
+    shadow-softness="0.65"
+
+    environment-image="TAINACH_PANO.jpg"
+    skybox-image="TAINACH_PANO.jpg"
+
+    orientation="-90deg 0deg 0deg"
+    scale="5 5 5"
+
+    camera-orbit="45deg 65deg 20m"
+    min-camera-orbit="auto auto 0.5m"
+    max-camera-orbit="auto auto 500m"
+    field-of-view="30deg"
+  ></model-viewer>
+
+  <script type="module">
+    const mv = document.getElementById('mv');
+
+    const mDot = document.getElementById('mDot');
+    const mTxt = document.getElementById('mTxt');
+    const pDot = document.getElementById('pDot');
+    const pTxt = document.getElementById('pTxt');
+
+    async function headOk(rel){
+      const url = new URL(rel, location.href).toString();
+      try{
+        const r = await fetch(url, { method:'HEAD', cache:'no-store' });
+        return r.ok;
+      }catch{ return false; }
+    }
+
+    mv.addEventListener('load', () => { mDot.classList.add('ok'); mTxt.textContent = 'Modell bereit'; });
+    mv.addEventListener('error', (e) => { mDot.classList.add('bad'); mTxt.textContent = 'Fehler beim Laden'; console.error(e); });
+
+    (async () => {
+      const ok = await headOk('TAINACH_PANO.jpg');
+      if (ok){ pDot.classList.add('ok'); pTxt.textContent = 'Panorama aktiv'; }
+      else { pDot.classList.add('bad'); pTxt.textContent = 'TAINACH_PANO.jpg fehlt'; mv.setAttribute('environment-image','neutral'); mv.removeAttribute('skybox-image'); }
+    })();
+
+    document.getElementById('reset').onclick = () => {
+      mv.cameraOrbit = "45deg 65deg 20m";
+      mv.fieldOfView = "30deg";
+    };
+
+    document.getElementById('rotate').onclick = (ev) => {
+      const on = mv.hasAttribute('auto-rotate');
+      if (on){ mv.removeAttribute('auto-rotate'); ev.target.textContent = 'Auto-Rotate: AUS'; }
+      else { mv.setAttribute('auto-rotate',''); ev.target.textContent = 'Auto-Rotate: AN'; }
+    };
+
+    document.getElementById('fs').onclick = async () => {
+      try{
+        if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+        else await document.exitFullscreen();
+      }catch{}
+    };
+
+    const scale = document.getElementById('scale');
+    const scVal = document.getElementById('scVal');
+    function setScale(v){
+      mv.setAttribute('scale', `${v} ${v} ${v}`);
+      scVal.textContent = String(v);
+    }
+    scale.oninput = () => setScale(Number(scale.value));
+    setScale(Number(scale.value));
+
+    const yaw = document.getElementById('yaw');
+    const yawVal = document.getElementById('yawVal');
+    function setOrientation(yawDeg){
+      mv.setAttribute('orientation', `-90deg ${yawDeg}deg 0deg`);
+      yawVal.textContent = String(yawDeg);
+    }
+    yaw.oninput = () => setOrientation(Number(yaw.value));
+    setOrientation(Number(yaw.value));
+  </script>
+</body>
+</html>
