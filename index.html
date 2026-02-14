@@ -3,127 +3,384 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>HAUS TAINACH – Web 3D / AR</title>
+  <title>HAUS TAINACH – Panorama + 3D</title>
 
-  <!-- IMPORTANT: use a pinned, stable version -->
+  <!-- Stable pinned version -->
   <script type="module" src="https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
 
   <style>
-    html,body{margin:0;height:100%;background:#07080a;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-    model-viewer{width:100%;height:100vh;display:block;background:radial-gradient(1200px 700px at 50% 25%, rgba(255,255,255,.07), rgba(0,0,0,.92))}
-    #hud{
-      position:fixed;left:12px;top:12px;z-index:9999;max-width:min(680px,calc(100% - 24px));
-      background:rgba(20,20,22,.78);backdrop-filter:blur(10px);
-      border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:10px 12px;color:#fff;
-      box-shadow:0 16px 50px rgba(0,0,0,.55);font-size:12px;line-height:1.35
+    :root{
+      --bg:#07080a;
+      --panel: rgba(18,18,20,.74);
+      --panel2: rgba(255,255,255,.08);
+      --stroke: rgba(255,255,255,.14);
+      --txt:#fff;
+      --muted: rgba(255,255,255,.72);
+      --good:#4be37a;
+      --warn:#f7c948;
+      --bad:#ff5d5d;
+      --r:16px;
+      --shadow: 0 18px 55px rgba(0,0,0,.60);
     }
-    #hud b{font-weight:800}
-    #hud .ok{color:#4be37a}
-    #hud .bad{color:#ff5d5d}
-    #hud .muted{opacity:.75}
-    #hud code{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);padding:1px 6px;border-radius:999px}
-    #hud .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px}
-    #hud button{
-      appearance:none;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.10);color:#fff;
-      border-radius:12px;padding:7px 10px;font-size:12px;cursor:pointer
+
+    html,body{margin:0;height:100%;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+    model-viewer{
+      width:100%;
+      height:100vh;
+      display:block;
+      background: radial-gradient(1200px 700px at 50% 25%, rgba(255,255,255,.07), rgba(0,0,0,.92));
     }
-    #hud button:hover{background:rgba(255,255,255,.14)}
+
+    /* Loader */
+    .loader{
+      position:fixed; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      background: radial-gradient(1400px 800px at 50% 25%, rgba(255,255,255,.08), rgba(0,0,0,.94));
+      z-index:30;
+    }
+    .card{
+      width:min(560px, calc(100% - 24px));
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(16,16,18,.80);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 24px 70px rgba(0,0,0,.68);
+      padding:16px;
+      color:var(--txt);
+    }
+    .card h1{margin:0 0 6px 0; font-size:15px; letter-spacing:.2px;}
+    .card p{margin:0 0 12px 0; color:var(--muted); font-size:12px; line-height:1.35;}
+    .bar{
+      height:10px;border-radius:999px;background:rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.12);overflow:hidden
+    }
+    .fill{height:100%;width:0%;background:rgba(255,255,255,.55);transition:width .2s ease}
+    .meta{margin-top:10px;display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:12px;gap:10px}
+    .hidden{display:none!important}
+
+    /* UI */
+    .ui{
+      position:fixed; left:12px; top:12px; right:12px;
+      display:flex; justify-content:space-between; gap:12px; align-items:flex-start;
+      pointer-events:none; z-index:20;
+    }
+    .panel{
+      pointer-events:auto;
+      background:var(--panel);
+      border:1px solid var(--stroke);
+      border-radius:var(--r);
+      box-shadow:var(--shadow);
+      backdrop-filter: blur(10px);
+      padding:12px;
+      max-width:min(620px, 100%);
+      color:var(--txt);
+    }
+    .title{display:flex;align-items:baseline;gap:10px;font-weight:900;letter-spacing:.2px}
+    .subtitle{font-weight:700;opacity:.65}
+    .sub{margin:6px 0 10px 0; color:var(--muted); font-size:12px; line-height:1.25;}
+
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      border-radius:999px; padding:7px 10px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.08);
+      color:var(--muted); font-size:12px;
+      user-select:none;
+    }
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--warn);}
+    .dot.ok{background:var(--good);}
+    .dot.bad{background:var(--bad);}
+
+    button, select, input[type="range"]{
+      appearance:none;
+      border:1px solid rgba(255,255,255,.16);
+      background:rgba(255,255,255,.10);
+      color:#fff;
+      border-radius:12px;
+      padding:9px 10px;
+      font-size:12px;
+      cursor:pointer;
+      pointer-events:auto;
+      outline:none;
+    }
+    button:hover, select:hover{background:rgba(255,255,255,.14)}
+    button:active{transform:translateY(1px)}
+    button.primary{background:rgba(255,255,255,.18)}
+    button.primary:hover{background:rgba(255,255,255,.24)}
+    select{padding-right:26px}
+
+    .slab{
+      display:flex; gap:10px; align-items:center; width:100%;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:12px;
+      padding:10px;
+      margin-top:10px;
+    }
+    .slab label{color:var(--muted); font-size:12px; min-width:92px;}
+    input[type="range"]{width:min(300px, 50vw); padding:0; height:34px;}
+    .val{margin-left:auto}
+
+    /* Bottom hint */
+    .hint{
+      position:fixed; left:12px; right:12px; bottom:12px;
+      display:flex; justify-content:center;
+      pointer-events:none; z-index:20;
+    }
+    .hint .panel{max-width:min(760px, 100%); text-align:center}
+    .kbd{
+      display:inline-block; padding:2px 8px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.08);
+      color:var(--txt); font-size:12px;
+    }
+
+    @media (max-width:520px){
+      .ui{left:10px;right:10px;top:10px}
+      input[type="range"]{width:100%}
+      .slab{flex-direction:column; align-items:stretch}
+      .slab label{min-width:auto}
+      .val{margin-left:0}
+    }
   </style>
 </head>
 
 <body>
-  <div id="hud">
-    <div><b>Debug</b> <span class="muted">– wenn hier alles grün ist, muss das Modell sichtbar sein</span></div>
-    <div class="row">
-      <span id="mvStatus" class="muted">model-viewer: …</span>
-      <span id="webglStatus" class="muted">WebGL: …</span>
-      <span id="glbStatus" class="muted">GLB: …</span>
+  <!-- Loader -->
+  <div id="loader" class="loader">
+    <div class="card">
+      <h1>HAUS TAINACH</h1>
+      <p>High-End Web-Viewer lädt… (Panorama + optimiertes Modell)</p>
+      <div class="bar"><div id="fill" class="fill"></div></div>
+      <div class="meta">
+        <span id="pct">0%</span>
+        <span>Tip: <span class="kbd">Drag</span> drehen · <span class="kbd">Scroll/Pinch</span> zoomen</span>
+      </div>
     </div>
-    <div class="row">
-      <span class="muted">Erwartete Datei:</span>
-      <code id="glbUrl">HAUSTAINACH.glb</code>
-      <button id="reload" type="button">Neu laden</button>
-      <button id="openGlb" type="button">GLB öffnen</button>
-    </div>
-    <div id="err" class="muted" style="margin-top:6px"></div>
   </div>
 
+  <!-- UI -->
+  <div class="ui">
+    <div class="panel">
+      <div class="title">HAUS TAINACH <span class="subtitle">· Panorama + 3D</span></div>
+      <div class="sub">
+        Modell: <span class="kbd">HAUS_TAINACH.glb</span>
+        &nbsp;|&nbsp; Panorama optional: <span class="kbd">TAINACH_PANO.jpg</span> (360° equirectangular) im Repo-Root.
+      </div>
+
+      <div class="row" style="margin-bottom:10px">
+        <span class="pill" title="Model Status"><span id="mDot" class="dot"></span><span id="mTxt">Lädt…</span></span>
+        <span class="pill" title="Panorama Status"><span id="pDot" class="dot"></span><span id="pTxt">Panorama: neutral</span></span>
+      </div>
+
+      <div class="row">
+        <select id="look">
+          <option value="neutral">Studio (neutral)</option>
+          <option value="pano">Panorama (TAINACH_PANO.jpg)</option>
+          <option value="dramatic">Dramatic Studio (mehr Kontrast)</option>
+        </select>
+
+        <button id="reset" type="button">Kamera Reset</button>
+        <button id="rotate" type="button">Auto-Rotate: AN</button>
+        <button id="fs" type="button">Fullscreen</button>
+      </div>
+
+      <div class="slab">
+        <label>Exposure</label>
+        <input id="exposure" type="range" min="0.6" max="2.0" step="0.05" value="1.15" />
+        <span class="pill val"><span id="expVal">1.15</span></span>
+      </div>
+
+      <div class="slab">
+        <label>Shadow</label>
+        <input id="shadow" type="range" min="0" max="1" step="0.05" value="0.90" />
+        <span class="pill val"><span id="shVal">0.90</span></span>
+      </div>
+
+      <div class="slab">
+        <label>FOV</label>
+        <input id="fov" type="range" min="20" max="60" step="1" value="30" />
+        <span class="pill val"><span id="fovVal">30</span><span style="opacity:.7">&deg;</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="hint">
+    <div class="panel">
+      <span style="color:var(--muted);font-size:12px">
+        Für Panorama: <span class="kbd">TAINACH_PANO.jpg</span> in den Repo-Root laden (360° equirectangular, z.B. 4096×2048).
+      </span>
+    </div>
+  </div>
+
+  <!-- Viewer -->
   <model-viewer
     id="mv"
-    src="HAUSTAINACH.glb"
+    src="HAUS_TAINACH.glb"
+
     camera-controls
     auto-rotate
     rotation-per-second="10deg"
     interaction-prompt="none"
     loading="eager"
     reveal="auto"
+
     tone-mapping="aces"
     exposure="1.15"
-    shadow-intensity="0.9"
+    shadow-intensity="0.90"
     shadow-softness="0.65"
     environment-image="neutral"
-    ar
-    ar-modes="webxr scene-viewer quick-look"
+
+    camera-orbit="45deg 65deg 10m"
+    min-camera-orbit="auto auto 2m"
+    max-camera-orbit="auto auto 80m"
+    field-of-view="30deg"
   ></model-viewer>
 
   <script type="module">
     const mv = document.getElementById('mv');
-    const mvStatus = document.getElementById('mvStatus');
-    const webglStatus = document.getElementById('webglStatus');
-    const glbStatus = document.getElementById('glbStatus');
-    const err = document.getElementById('err');
 
-    // 1) model-viewer loaded?
-    const mvDefined = !!customElements.get('model-viewer');
-    mvStatus.innerHTML = mvDefined
-      ? '<span class="ok">model-viewer: OK</span>'
-      : '<span class="bad">model-viewer: NICHT geladen (Script geblockt?)</span>';
+    // Loader
+    const loader = document.getElementById('loader');
+    const fill = document.getElementById('fill');
+    const pct = document.getElementById('pct');
 
-    // 2) WebGL support?
-    function hasWebGL(){
+    mv.addEventListener('progress', (e) => {
+      const v = Math.round((e.detail.totalProgress || 0) * 100);
+      fill.style.width = v + '%';
+      pct.textContent = v + '%';
+    });
+
+    // Status pills
+    const mDot = document.getElementById('mDot');
+    const mTxt = document.getElementById('mTxt');
+    const pDot = document.getElementById('pDot');
+    const pTxt = document.getElementById('pTxt');
+
+    mv.addEventListener('load', () => {
+      loader.classList.add('hidden');
+      mDot.classList.add('ok');
+      mTxt.textContent = 'Modell bereit';
+    });
+
+    mv.addEventListener('error', (e) => {
+      loader.classList.add('hidden');
+      mDot.classList.add('bad');
+      mTxt.textContent = 'Fehler beim Laden';
+      console.error('model-viewer error:', e);
+      console.log('Erwarte GLB:', new URL('HAUS_TAINACH.glb', location.href).toString());
+    });
+
+    // Controls
+    document.getElementById('reset').onclick = () => {
+      mv.cameraOrbit = "45deg 65deg 10m";
+      mv.fieldOfView = "30deg";
+    };
+
+    document.getElementById('rotate').onclick = (ev) => {
+      const on = mv.hasAttribute('auto-rotate');
+      if (on){ mv.removeAttribute('auto-rotate'); ev.target.textContent = 'Auto-Rotate: AUS'; }
+      else { mv.setAttribute('auto-rotate',''); ev.target.textContent = 'Auto-Rotate: AN'; }
+    };
+
+    document.getElementById('fs').onclick = async () => {
       try{
-        const c=document.createElement('canvas');
-        return !!(c.getContext('webgl') || c.getContext('experimental-webgl') || c.getContext('webgl2'));
-      }catch{return false;}
+        if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+        else await document.exitFullscreen();
+      }catch{}
+    };
+
+    // Sliders
+    const exposure = document.getElementById('exposure');
+    const expVal = document.getElementById('expVal');
+    exposure.oninput = () => {
+      mv.exposure = Number(exposure.value);
+      expVal.textContent = Number(exposure.value).toFixed(2);
+    };
+
+    const shadow = document.getElementById('shadow');
+    const shVal = document.getElementById('shVal');
+    shadow.oninput = () => {
+      mv.shadowIntensity = Number(shadow.value);
+      shVal.textContent = Number(shadow.value).toFixed(2);
+    };
+
+    const fov = document.getElementById('fov');
+    const fovVal = document.getElementById('fovVal');
+    fov.oninput = () => {
+      mv.fieldOfView = `${Number(fov.value)}deg`;
+      fovVal.textContent = String(fov.value);
+    };
+
+    // Look presets (Panorama optional)
+    const look = document.getElementById('look');
+    async function headOk(url){
+      try{
+        const r = await fetch(url, { method:'HEAD', cache:'no-store' });
+        return r.ok;
+      }catch{ return false; }
     }
-    webglStatus.innerHTML = hasWebGL()
-      ? '<span class="ok">WebGL: OK</span>'
-      : '<span class="bad">WebGL: NICHT verfügbar</span>';
 
-    // 3) GLB reachable?
-    const glbUrl = new URL('HAUSTAINACH.glb', location.href).toString();
-    document.getElementById('glbUrl').textContent = glbUrl;
+    async function setLook(mode){
+      if (mode === 'neutral'){
+        mv.setAttribute('environment-image', 'neutral');
+        mv.removeAttribute('skybox-image');
+        mv.exposure = 1.15;
+        mv.shadowIntensity = 0.90;
+        mv.shadowSoftness = 0.65;
+        pDot.className = 'dot ok';
+        pTxt.textContent = 'Panorama: neutral';
+      }
 
-    async function checkGlb(){
-      try{
-        const r = await fetch(glbUrl, { method:'HEAD', cache:'no-store' });
-        if (!r.ok){
-          glbStatus.innerHTML = `<span class="bad">GLB: ${r.status} ${r.statusText}</span>`;
-          err.textContent = 'Fix: Datei muss exakt im Repo-Root liegen und exakt so heißen (Groß/Kleinschreibung!).';
+      if (mode === 'dramatic'){
+        mv.setAttribute('environment-image', 'neutral');
+        mv.removeAttribute('skybox-image');
+        mv.exposure = 1.28;
+        mv.shadowIntensity = 0.98;
+        mv.shadowSoftness = 0.55;
+        pDot.className = 'dot ok';
+        pTxt.textContent = 'Studio: Kontrast';
+      }
+
+      if (mode === 'pano'){
+        const panoUrl = new URL('TAINACH_PANO.jpg', location.href).toString();
+        const ok = await headOk(panoUrl);
+        if (!ok){
+          pDot.className = 'dot bad';
+          pTxt.textContent = 'Panorama fehlt: TAINACH_PANO.jpg';
+          // Fallback to neutral
+          mv.setAttribute('environment-image', 'neutral');
+          mv.removeAttribute('skybox-image');
           return;
         }
-        const len = r.headers.get('content-length');
-        glbStatus.innerHTML = `<span class="ok">GLB: OK</span>` + (len ? ` <span class="muted">(${(Number(len)/1024/1024).toFixed(2)} MB)</span>` : '');
-        err.textContent = '';
-      }catch(e){
-        glbStatus.innerHTML = `<span class="bad">GLB: Fehler beim Abruf</span>`;
-        err.textContent = String(e);
+        mv.setAttribute('environment-image', 'TAINACH_PANO.jpg');
+        mv.setAttribute('skybox-image', 'TAINACH_PANO.jpg');
+        mv.exposure = 1.05;
+        mv.shadowIntensity = 0.85;
+        mv.shadowSoftness = 0.70;
+        pDot.className = 'dot ok';
+        pTxt.textContent = 'Panorama: aktiv';
       }
+
+      // Sync UI values
+      exposure.value = Number(mv.exposure).toFixed(2);
+      expVal.textContent = Number(mv.exposure).toFixed(2);
+      shadow.value = Number(mv.shadowIntensity).toFixed(2);
+      shVal.textContent = Number(mv.shadowIntensity).toFixed(2);
     }
-    await checkGlb();
 
-    // model-viewer events
-    mv.addEventListener('load', () => {
-      err.innerHTML = '<span class="ok">Modell geladen ✅</span>';
-    });
-    mv.addEventListener('error', (e) => {
-      console.error(e);
-      err.innerHTML = '<span class="bad">model-viewer error:</span> ' + (e?.detail?.message || 'unbekannt');
-    });
+    look.onchange = () => setLook(look.value);
 
-    // Buttons
-    document.getElementById('reload').onclick = () => location.reload();
-    document.getElementById('openGlb').onclick = () => window.open(glbUrl, '_blank');
+    // Init
+    setLook('neutral');
   </script>
+
+  <!--
+    ✅ Repo-Root (GitHub Pages) muss enthalten:
+      - index.html
+      - HAUS_TAINACH.glb
+      - optional: TAINACH_PANO.jpg (360° equirectangular)
+  -->
 </body>
 </html>
