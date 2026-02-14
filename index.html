@@ -10,15 +10,17 @@
 <style>
 :root{
   --bg:#07080a;
-  --panel:rgba(20,20,22,.75);
+  --panel:rgba(20,20,22,.78);
   --stroke:rgba(255,255,255,.12);
   --txt:#fff;
-  --muted:rgba(255,255,255,.65);
+  --muted:rgba(255,255,255,.68);
+  --good:#4be37a;
+  --warn:#f7c948;
+  --bad:#ff5d5d;
   --r:14px;
 }
-
 html,body{margin:0;height:100%;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto;}
-model-viewer{width:100%;height:100vh;display:block;}
+model-viewer{width:100%;height:100vh;display:block;background:radial-gradient(1200px 700px at 50% 25%, rgba(255,255,255,.07), rgba(0,0,0,.92));}
 
 .ui{
   position:fixed;
@@ -28,7 +30,6 @@ model-viewer{width:100%;height:100vh;display:block;}
   z-index:20;
   pointer-events:none;
 }
-
 .panel{
   pointer-events:auto;
   background:var(--panel);
@@ -37,20 +38,35 @@ model-viewer{width:100%;height:100vh;display:block;}
   backdrop-filter:blur(12px);
   padding:10px;
   color:var(--txt);
+  max-width:520px;
 }
-
 .title{
   font-size:14px;
-  font-weight:700;
-  margin-bottom:6px;
+  font-weight:800;
+  margin:0 0 6px 0;
 }
-
 .row{
   display:flex;
   gap:6px;
   flex-wrap:wrap;
+  align-items:center;
   margin-bottom:6px;
 }
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:var(--muted);
+  font-size:11px;
+  user-select:none;
+}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--warn);}
+.dot.ok{background:var(--good);}
+.dot.bad{background:var(--bad);}
 
 button{
   appearance:none;
@@ -62,7 +78,6 @@ button{
   font-size:11px;
   cursor:pointer;
 }
-
 button:active{transform:scale(.97)}
 
 .sliderRow{
@@ -71,40 +86,42 @@ button:active{transform:scale(.97)}
   gap:8px;
   margin-bottom:6px;
 }
-
 .sliderRow label{
   font-size:11px;
   color:var(--muted);
-  width:45px;
+  width:46px;
 }
-
 input[type="range"]{
   flex:1;
   height:22px;
 }
-
 .value{
   font-size:11px;
-  width:35px;
+  width:46px;
   text-align:right;
   color:var(--muted);
 }
-
 @media(min-width:700px){
-  .panel{max-width:480px}
+  .panel{max-width:520px}
 }
 </style>
 </head>
 
 <body>
-
 <div class="ui">
   <div class="panel">
     <div class="title">HAUS TAINACH · 360°</div>
 
     <div class="row">
+      <span class="pill"><span id="mDot" class="dot"></span><span id="mTxt">Lädt…</span></span>
+      <span class="pill"><span id="pDot" class="dot"></span><span id="pTxt">Panorama…</span></span>
+      <span class="pill"><span id="gDot" class="dot"></span><span id="gTxt">Boden…</span></span>
+    </div>
+
+    <div class="row">
       <button id="reset">Reset</button>
       <button id="rotateBtn">Rotate</button>
+      <button id="groundBtn">Boden</button>
       <button id="fs">Full</button>
     </div>
 
@@ -117,15 +134,20 @@ input[type="range"]{
     <div class="sliderRow">
       <label>Yaw</label>
       <input id="yaw" type="range" min="-180" max="180" step="1" value="-90"/>
-      <div class="value" id="yawVal">-90</div>
+      <div class="value" id="yawVal">-90°</div>
+    </div>
+
+    <div class="sliderRow">
+      <label>X</label>
+      <input id="tx" type="range" min="-40" max="40" step="0.5" value="0"/>
+      <div class="value" id="txVal">0.0m</div>
     </div>
 
     <div class="sliderRow">
       <label>Z</label>
-      <input id="tz" type="range" min="-40" max="40" step="0.5" value="-16"/>
-      <div class="value" id="tzVal">-16</div>
+      <input id="tz" type="range" min="-60" max="60" step="0.5" value="-16"/>
+      <div class="value" id="tzVal">-16.0m</div>
     </div>
-
   </div>
 </div>
 
@@ -134,65 +156,155 @@ input[type="range"]{
   src="HAUS_TAINACH.glb"
   camera-controls
   auto-rotate
+  rotation-per-second="10deg"
+  interaction-prompt="none"
+  loading="eager"
+  reveal="auto"
+
+  tone-mapping="aces"
+  exposure="1.10"
+  shadow-intensity="0.90"
+  shadow-softness="0.65"
+
+  environment-image="TAINACH_PANO.jpg"
+  skybox-image="TAINACH_PANO.jpg"
+
   orientation="90deg -90deg 0deg"
   scale="7 7 7"
   translation="0m 0m -16m"
-  environment-image="TAINACH_PANO.jpg"
-  skybox-image="TAINACH_PANO.jpg"
-  tone-mapping="aces"
-  exposure="1.1"
-  shadow-intensity="0.9"
+
   camera-orbit="45deg 65deg 120m"
+  min-camera-orbit="auto auto 0.2m"
   max-camera-orbit="auto auto 2000m"
-  field-of-view="40deg">
-</model-viewer>
+  field-of-view="40deg"
+></model-viewer>
 
 <script>
 const mv = document.getElementById("mv");
 
+// Status UI
+const mDot = document.getElementById("mDot");
+const mTxt = document.getElementById("mTxt");
+const pDot = document.getElementById("pDot");
+const pTxt = document.getElementById("pTxt");
+const gDot = document.getElementById("gDot");
+const gTxt = document.getElementById("gTxt");
+
+// Controls
 const scale = document.getElementById("scale");
 const yaw = document.getElementById("yaw");
+const tx = document.getElementById("tx");
 const tz = document.getElementById("tz");
 
 const scaleVal = document.getElementById("scaleVal");
 const yawVal = document.getElementById("yawVal");
+const txVal = document.getElementById("txVal");
 const tzVal = document.getElementById("tzVal");
 
-function updateTransform(){
-  mv.setAttribute("scale", `${scale.value} ${scale.value} ${scale.value}`);
-  mv.setAttribute("orientation", `90deg ${yaw.value}deg 0deg`);
-  mv.setAttribute("translation", `0m 0m ${tz.value}m`);
-  scaleVal.textContent = scale.value;
-  yawVal.textContent = yaw.value;
-  tzVal.textContent = tz.value;
+function parseTranslation(str){
+  const parts = String(str || "0m 0m 0m").trim().split(/\s+/);
+  const n = parts.map(p => parseFloat(p));
+  return { x: n[0] || 0, y: n[1] || 0, z: n[2] || 0 };
+}
+function setTranslation(x,y,z){
+  mv.setAttribute("translation", `${x}m ${y}m ${z}m`);
+  mv.requestRender();
 }
 
-scale.oninput = updateTransform;
-yaw.oninput = updateTransform;
-tz.oninput = updateTransform;
+function updateTransform(){
+  const s = Number(scale.value);
+  const y = Number(yaw.value);
+  const x = Number(tx.value);
+  const z = Number(tz.value);
 
-document.getElementById("reset").onclick = ()=>{
+  mv.setAttribute("scale", `${s} ${s} ${s}`);
+  mv.setAttribute("orientation", `90deg ${y}deg 0deg`);
+
+  // Keep current Y, update X/Z
+  const t = parseTranslation(mv.getAttribute("translation"));
+  setTranslation(x, t.y, z);
+
+  scaleVal.textContent = String(s);
+  yawVal.textContent = `${y}°`;
+  txVal.textContent = `${x.toFixed(1)}m`;
+  tzVal.textContent = `${z.toFixed(1)}m`;
+}
+
+async function headOk(rel){
+  try{
+    const url = new URL(rel, location.href).toString();
+    const r = await fetch(url, { method:"HEAD", cache:"no-store" });
+    return r.ok;
+  }catch(e){ return false; }
+}
+
+// Boden setzen: minY -> 0 (wenn API verfügbar)
+function setGround(){
+  // getBoundingBox ist in neueren model-viewer Versionen vorhanden, aber nicht überall garantiert
+  const bbox = (typeof mv.getBoundingBox === "function") ? mv.getBoundingBox() : null;
+
+  if (!bbox || !bbox.min || typeof bbox.min.y !== "number"){
+    gDot.className = "dot bad";
+    gTxt.textContent = "Boden: n/a";
+    return;
+  }
+
+  const minY = bbox.min.y;
+  const t = parseTranslation(mv.getAttribute("translation"));
+  const newY = t.y - minY; // shift up/down so minY becomes 0
+  setTranslation(t.x, newY, t.z);
+
+  gDot.className = "dot ok";
+  gTxt.textContent = `Boden: ok`;
+}
+
+// Events
+mv.addEventListener("load", async () => {
+  mDot.className = "dot ok";
+  mTxt.textContent = "Modell bereit";
+
+  const panoOk = await headOk("TAINACH_PANO.jpg");
+  pDot.className = panoOk ? "dot ok" : "dot bad";
+  pTxt.textContent = panoOk ? "Panorama aktiv" : "Panorama fehlt";
+
+  // initial transform + ground
+  updateTransform();
+  // Ground after a frame to ensure bbox is ready
+  requestAnimationFrame(() => setGround());
+});
+
+mv.addEventListener("error", (e) => {
+  mDot.className = "dot bad";
+  mTxt.textContent = "Fehler";
+  console.error(e);
+});
+
+// UI handlers
+scale.oninput = () => { updateTransform(); requestAnimationFrame(() => setGround()); };
+yaw.oninput   = () => { updateTransform(); requestAnimationFrame(() => setGround()); };
+tx.oninput    = () => { updateTransform(); requestAnimationFrame(() => setGround()); };
+tz.oninput    = () => { updateTransform(); requestAnimationFrame(() => setGround()); };
+
+document.getElementById("reset").onclick = () => {
   mv.cameraOrbit = "45deg 65deg 120m";
+  mv.fieldOfView = "40deg";
 };
 
-document.getElementById("rotateBtn").onclick = ()=>{
-  if(mv.hasAttribute("auto-rotate")){
-    mv.removeAttribute("auto-rotate");
-  }else{
-    mv.setAttribute("auto-rotate","");
-  }
+document.getElementById("rotateBtn").onclick = () => {
+  if (mv.hasAttribute("auto-rotate")) mv.removeAttribute("auto-rotate");
+  else mv.setAttribute("auto-rotate","");
 };
 
-document.getElementById("fs").onclick = ()=>{
-  if(!document.fullscreenElement){
-    document.documentElement.requestFullscreen();
-  }else{
-    document.exitFullscreen();
-  }
+document.getElementById("groundBtn").onclick = () => setGround();
+
+document.getElementById("fs").onclick = () => {
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen().catch(()=>{});
 };
 
-updateTransform();
+// Ensure start defaults are exactly as requested
+yaw.value = "-90";
+yawVal.textContent = "-90°";
 </script>
-
 </body>
 </html>
