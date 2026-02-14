@@ -5,197 +5,49 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>HAUS TAINACH – Web 3D / AR</title>
 
-  <!-- model-viewer (WebGL + AR) -->
-  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <!-- IMPORTANT: use a pinned, stable version -->
+  <script type="module" src="https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
 
   <style>
-    :root{
-      --bg:#07080a;
-      --panel: rgba(18,18,20,.72);
-      --panel2: rgba(255,255,255,.08);
-      --stroke: rgba(255,255,255,.14);
-      --txt:#fff;
-      --muted: rgba(255,255,255,.72);
-      --good:#4be37a;
-      --warn:#f7c948;
-      --bad:#ff5d5d;
-      --r:16px;
-      --shadow: 0 16px 50px rgba(0,0,0,.55);
+    html,body{margin:0;height:100%;background:#07080a;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    model-viewer{width:100%;height:100vh;display:block;background:radial-gradient(1200px 700px at 50% 25%, rgba(255,255,255,.07), rgba(0,0,0,.92))}
+    #hud{
+      position:fixed;left:12px;top:12px;z-index:9999;max-width:min(680px,calc(100% - 24px));
+      background:rgba(20,20,22,.78);backdrop-filter:blur(10px);
+      border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:10px 12px;color:#fff;
+      box-shadow:0 16px 50px rgba(0,0,0,.55);font-size:12px;line-height:1.35
     }
-
-    html,body{height:100%;margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
-    model-viewer{width:100%;height:100vh;background:
-      radial-gradient(1200px 700px at 50% 25%, rgba(255,255,255,.07), rgba(0,0,0,.92));
+    #hud b{font-weight:800}
+    #hud .ok{color:#4be37a}
+    #hud .bad{color:#ff5d5d}
+    #hud .muted{opacity:.75}
+    #hud code{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);padding:1px 6px;border-radius:999px}
+    #hud .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px}
+    #hud button{
+      appearance:none;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.10);color:#fff;
+      border-radius:12px;padding:7px 10px;font-size:12px;cursor:pointer
     }
-
-    /* Top UI */
-    .ui{
-      position:fixed; inset:12px 12px auto 12px;
-      display:flex; gap:12px; align-items:flex-start; justify-content:space-between;
-      pointer-events:none; z-index:10;
-    }
-    .panel{
-      pointer-events:auto;
-      background:var(--panel);
-      border:1px solid var(--stroke);
-      border-radius:var(--r);
-      box-shadow:var(--shadow);
-      backdrop-filter: blur(10px);
-      padding:12px;
-      max-width:min(560px, 100%);
-    }
-    .title{display:flex; align-items:center; gap:10px; color:var(--txt); font-weight:800; letter-spacing:.2px;}
-    .sub{margin:6px 0 10px 0; color:var(--muted); font-size:12px; line-height:1.25;}
-
-    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
-    .chip{
-      display:flex; align-items:center; gap:8px;
-      background:var(--panel2);
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:999px;
-      padding:8px 10px;
-      color:var(--txt);
-      font-size:12px;
-      user-select:none;
-    }
-    .dot{width:8px;height:8px;border-radius:50%;}
-    .dot.good{background:var(--good);}
-    .dot.warn{background:var(--warn);}
-    .dot.bad{background:var(--bad);}
-
-    select, button, input[type="range"]{
-      pointer-events:auto;
-      appearance:none;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.10);
-      color:var(--txt);
-      border-radius:12px;
-      padding:9px 10px;
-      font-size:12px;
-      outline:none;
-    }
-    select{padding-right:28px}
-    button{cursor:pointer}
-    button:hover{background:rgba(255,255,255,.14)}
-    button:active{transform:translateY(1px)}
-    .btnPrimary{background:rgba(255,255,255,.16)}
-    .btnPrimary:hover{background:rgba(255,255,255,.22)}
-    .btnGhost{background:rgba(255,255,255,.08)}
-
-    .slab{
-      display:flex; gap:10px; align-items:center; width:100%;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:12px;
-      padding:10px;
-      margin-top:10px;
-    }
-    .slab label{color:var(--muted); font-size:12px; min-width:90px;}
-    input[type="range"]{width:min(260px, 48vw); padding:0; height:34px;}
-
-    /* Loader */
-    .loader{
-      position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
-      background: radial-gradient(1400px 800px at 50% 25%, rgba(255,255,255,.08), rgba(0,0,0,.94));
-      z-index:20;
-    }
-    .card{
-      width:min(520px, calc(100% - 24px));
-      border-radius:18px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(16,16,18,.78);
-      backdrop-filter: blur(12px);
-      box-shadow: 0 24px 70px rgba(0,0,0,.65);
-      padding:16px;
-      color:var(--txt);
-    }
-    .card h1{margin:0 0 6px 0; font-size:15px; letter-spacing:.2px;}
-    .card p{margin:0 0 12px 0; color:var(--muted); font-size:12px; line-height:1.35;}
-    .bar{height:10px;border-radius:999px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.12);overflow:hidden}
-    .fill{height:100%;width:0%;background:rgba(255,255,255,.55);transition:width .2s ease}
-    .meta{margin-top:10px;display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:12px}
-    .hidden{display:none!important}
-
-    /* Bottom hints */
-    .hint{
-      position:fixed; inset:auto 12px 12px 12px;
-      display:flex; justify-content:center; pointer-events:none; z-index:10;
-    }
-    .hint .panel{max-width:min(700px, 100%); text-align:center}
-    .kbd{display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08); color:var(--txt); font-size:12px}
-
-    @media (max-width:520px){
-      .ui{inset:10px 10px auto 10px}
-      .slab{flex-direction:column; align-items:stretch}
-      .slab label{min-width:auto}
-      input[type="range"]{width:100%}
-    }
+    #hud button:hover{background:rgba(255,255,255,.14)}
   </style>
 </head>
 
 <body>
-  <!-- Loader -->
-  <div id="loader" class="loader">
-    <div class="card">
-      <h1>HAUS TAINACH</h1>
-      <p>High-Quality Web-Viewer lädt… (Mobile + AR)</p>
-      <div class="bar"><div id="fill" class="fill"></div></div>
-      <div class="meta">
-        <span id="pct">0%</span>
-        <span>Tip: <span class="kbd">Drag</span> drehen · <span class="kbd">Scroll/Pinch</span> zoomen</span>
-      </div>
+  <div id="hud">
+    <div><b>Debug</b> <span class="muted">– wenn hier alles grün ist, muss das Modell sichtbar sein</span></div>
+    <div class="row">
+      <span id="mvStatus" class="muted">model-viewer: …</span>
+      <span id="webglStatus" class="muted">WebGL: …</span>
+      <span id="glbStatus" class="muted">GLB: …</span>
     </div>
+    <div class="row">
+      <span class="muted">Erwartete Datei:</span>
+      <code id="glbUrl">HAUSTAINACH.glb</code>
+      <button id="reload" type="button">Neu laden</button>
+      <button id="openGlb" type="button">GLB öffnen</button>
+    </div>
+    <div id="err" class="muted" style="margin-top:6px"></div>
   </div>
 
-  <!-- UI -->
-  <div class="ui">
-    <div class="panel">
-      <div class="title">HAUS TAINACH <span style="opacity:.6;font-weight:700">· Web 3D / AR</span></div>
-      <div class="sub">
-        Optik-Preset, Licht/Exposure &amp; Kamera. (Panorama optional: <span class="kbd">TAINACH_PANO.jpg</span> im Repo-Root ablegen.)
-      </div>
-
-      <div class="row" style="margin-bottom:10px">
-        <span class="chip" title="AR Status"><span id="arDot" class="dot warn"></span><span id="arTxt">AR prüfen…</span></span>
-        <span class="chip" title="Model Status"><span id="mDot" class="dot warn"></span><span id="mTxt">Lädt…</span></span>
-      </div>
-
-      <div class="row">
-        <select id="look">
-          <option value="neutral">Studio (neutral)</option>
-          <option value="pano">Panorama (TAINACH_PANO.jpg)</option>
-          <option value="dark">Dark Studio (mehr Kontrast)</option>
-        </select>
-
-        <button id="reset" class="btnGhost" type="button">Kamera Reset</button>
-        <button id="toggleRotate" class="btnGhost" type="button">Auto-Rotate: AN</button>
-        <button id="fs" class="btnGhost" type="button">Fullscreen</button>
-        <button id="arBtn" class="btnPrimary" type="button">AR starten</button>
-      </div>
-
-      <div class="slab">
-        <label>Exposure</label>
-        <input id="exposure" type="range" min="0.6" max="2.0" step="0.05" value="1.10" />
-        <span id="expVal" class="chip" style="margin-left:auto">1.10</span>
-      </div>
-
-      <div class="slab">
-        <label>Shadow</label>
-        <input id="shadow" type="range" min="0" max="1" step="0.05" value="0.85" />
-        <span id="shVal" class="chip" style="margin-left:auto">0.85</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="hint">
-    <div class="panel">
-      <span style="color:var(--muted);font-size:12px">
-        Wenn du später Toggle willst: Objekte in Blender als <span class="kbd">DACH</span>, <span class="kbd">AUSSENWAND</span>, <span class="kbd">FENSTER</span>, <span class="kbd">GLAS</span> benennen.
-      </span>
-    </div>
-  </div>
-
-  <!-- Viewer -->
   <model-viewer
     id="mv"
     src="HAUSTAINACH.glb"
@@ -205,192 +57,73 @@
     interaction-prompt="none"
     loading="eager"
     reveal="auto"
-
-    <!-- Optik -->
     tone-mapping="aces"
-    exposure="1.10"
-    shadow-intensity="0.85"
+    exposure="1.15"
+    shadow-intensity="0.9"
     shadow-softness="0.65"
     environment-image="neutral"
-
-    <!-- Kamera -->
-    camera-orbit="45deg 65deg 10m"
-    min-camera-orbit="auto auto 2m"
-    max-camera-orbit="auto auto 80m"
-    field-of-view="30deg"
-
-    <!-- AR -->
     ar
     ar-modes="webxr scene-viewer quick-look"
-  >
-  </model-viewer>
+  ></model-viewer>
 
   <script type="module">
     const mv = document.getElementById('mv');
+    const mvStatus = document.getElementById('mvStatus');
+    const webglStatus = document.getElementById('webglStatus');
+    const glbStatus = document.getElementById('glbStatus');
+    const err = document.getElementById('err');
 
-    // Loader
-    const loader = document.getElementById('loader');
-    const fill = document.getElementById('fill');
-    const pct  = document.getElementById('pct');
-    const mDot = document.getElementById('mDot');
-    const mTxt = document.getElementById('mTxt');
+    // 1) model-viewer loaded?
+    const mvDefined = !!customElements.get('model-viewer');
+    mvStatus.innerHTML = mvDefined
+      ? '<span class="ok">model-viewer: OK</span>'
+      : '<span class="bad">model-viewer: NICHT geladen (Script geblockt?)</span>';
 
-    mv.addEventListener('progress', (e) => {
-      const v = Math.round((e.detail.totalProgress || 0) * 100);
-      fill.style.width = v + '%';
-      pct.textContent = v + '%';
-    });
-
-    mv.addEventListener('load', async () => {
-      loader.classList.add('hidden');
-      mDot.className = 'dot good';
-      mTxt.textContent = 'Modell bereit';
-      await updateArStatus();
-      // Auto-fit: falls Kamera/Scale anders ist, einmal "jump to framing"
-      // model-viewer framed standardmäßig; optional könntest du hier später "mv.jumpCameraToGoal()" nutzen.
-    });
-
-    mv.addEventListener('error', (e) => {
-      mDot.className = 'dot bad';
-      mTxt.textContent = 'Fehler beim Laden';
-      console.error('model-viewer error:', e);
-    });
-
-    // AR status + button
-    const arDot = document.getElementById('arDot');
-    const arTxt = document.getElementById('arTxt');
-    const arBtn = document.getElementById('arBtn');
-
-    async function updateArStatus(){
+    // 2) WebGL support?
+    function hasWebGL(){
       try{
-        const can = await mv.canActivateAR;
-        if (can){
-          arDot.className = 'dot good';
-          arTxt.textContent = 'AR bereit';
-          arBtn.disabled = false;
-          arBtn.style.opacity = '1';
-        } else {
-          arDot.className = 'dot bad';
-          arTxt.textContent = 'AR nicht verfügbar';
-          arBtn.disabled = true;
-          arBtn.style.opacity = '.5';
+        const c=document.createElement('canvas');
+        return !!(c.getContext('webgl') || c.getContext('experimental-webgl') || c.getContext('webgl2'));
+      }catch{return false;}
+    }
+    webglStatus.innerHTML = hasWebGL()
+      ? '<span class="ok">WebGL: OK</span>'
+      : '<span class="bad">WebGL: NICHT verfügbar</span>';
+
+    // 3) GLB reachable?
+    const glbUrl = new URL('HAUSTAINACH.glb', location.href).toString();
+    document.getElementById('glbUrl').textContent = glbUrl;
+
+    async function checkGlb(){
+      try{
+        const r = await fetch(glbUrl, { method:'HEAD', cache:'no-store' });
+        if (!r.ok){
+          glbStatus.innerHTML = `<span class="bad">GLB: ${r.status} ${r.statusText}</span>`;
+          err.textContent = 'Fix: Datei muss exakt im Repo-Root liegen und exakt so heißen (Groß/Kleinschreibung!).';
+          return;
         }
-      }catch{
-        arDot.className = 'dot bad';
-        arTxt.textContent = 'AR Status unbek.';
+        const len = r.headers.get('content-length');
+        glbStatus.innerHTML = `<span class="ok">GLB: OK</span>` + (len ? ` <span class="muted">(${(Number(len)/1024/1024).toFixed(2)} MB)</span>` : '');
+        err.textContent = '';
+      }catch(e){
+        glbStatus.innerHTML = `<span class="bad">GLB: Fehler beim Abruf</span>`;
+        err.textContent = String(e);
       }
     }
+    await checkGlb();
 
-    arBtn.addEventListener('click', async () => {
-      try{
-        // request AR
-        await mv.activateAR();
-      }catch(err){
-        console.warn('AR activate failed:', err);
-      }
+    // model-viewer events
+    mv.addEventListener('load', () => {
+      err.innerHTML = '<span class="ok">Modell geladen ✅</span>';
+    });
+    mv.addEventListener('error', (e) => {
+      console.error(e);
+      err.innerHTML = '<span class="bad">model-viewer error:</span> ' + (e?.detail?.message || 'unbekannt');
     });
 
-    // Look presets
-    const look = document.getElementById('look');
-
-    function setLook(mode){
-      if (mode === 'neutral'){
-        mv.setAttribute('environment-image', 'neutral');
-        mv.removeAttribute('skybox-image');
-        mv.exposure = 1.10;
-        mv.shadowIntensity = 0.85;
-        mv.shadowSoftness = 0.65;
-      }
-      if (mode === 'pano'){
-        // Lege eine Datei "TAINACH_PANO.jpg" in den Repo-Root (neben index.html).
-        // Muss ein 360° equirectangular Panorama sein.
-        mv.setAttribute('environment-image', 'TAINACH_PANO.jpg');
-        mv.setAttribute('skybox-image', 'TAINACH_PANO.jpg');
-        mv.exposure = 1.05;
-        mv.shadowIntensity = 0.80;
-        mv.shadowSoftness = 0.70;
-      }
-      if (mode === 'dark'){
-        mv.setAttribute('environment-image', 'neutral');
-        mv.removeAttribute('skybox-image');
-        mv.exposure = 1.25;
-        mv.shadowIntensity = 0.95;
-        mv.shadowSoftness = 0.55;
-      }
-      syncSliders();
-    }
-
-    look.addEventListener('change', () => setLook(look.value));
-
-    // Sliders
-    const exposure = document.getElementById('exposure');
-    const expVal   = document.getElementById('expVal');
-    const shadow   = document.getElementById('shadow');
-    const shVal    = document.getElementById('shVal');
-
-    function syncSliders(){
-      exposure.value = Number(mv.exposure).toFixed(2);
-      expVal.textContent = Number(mv.exposure).toFixed(2);
-      shadow.value = Number(mv.shadowIntensity).toFixed(2);
-      shVal.textContent = Number(mv.shadowIntensity).toFixed(2);
-    }
-
-    exposure.addEventListener('input', () => {
-      mv.exposure = Number(exposure.value);
-      expVal.textContent = Number(exposure.value).toFixed(2);
-    });
-
-    shadow.addEventListener('input', () => {
-      mv.shadowIntensity = Number(shadow.value);
-      shVal.textContent = Number(shadow.value).toFixed(2);
-    });
-
-    // Camera + rotate
-    const reset = document.getElementById('reset');
-    reset.addEventListener('click', () => {
-      mv.cameraOrbit = "45deg 65deg 10m";
-      mv.fieldOfView = "30deg";
-    });
-
-    const toggleRotate = document.getElementById('toggleRotate');
-    function setRotate(on){
-      if (on){
-        mv.setAttribute('auto-rotate', '');
-        toggleRotate.textContent = 'Auto-Rotate: AN';
-      } else {
-        mv.removeAttribute('auto-rotate');
-        toggleRotate.textContent = 'Auto-Rotate: AUS';
-      }
-    }
-    toggleRotate.addEventListener('click', () => setRotate(!mv.hasAttribute('auto-rotate')));
-
-    // Fullscreen
-    const fs = document.getElementById('fs');
-    fs.addEventListener('click', async () => {
-      const el = document.documentElement;
-      try{
-        if (!document.fullscreenElement) await el.requestFullscreen();
-        else await document.exitFullscreen();
-      }catch{}
-    });
-
-    // Start defaults
-    setLook('neutral');
-    syncSliders();
-    updateArStatus();
+    // Buttons
+    document.getElementById('reload').onclick = () => location.reload();
+    document.getElementById('openGlb').onclick = () => window.open(glbUrl, '_blank');
   </script>
-
-  <!--
-    ✅ Repo-Root sollte enthalten:
-      - index.html (diese Datei)
-      - HAUSTAINACH.glb (dein Modell)
-      - optional: TAINACH_PANO.jpg (360° Panorama, equirectangular)
-
-    🔧 Für maximale Optik später:
-      - echtes HDRI (HDR/EXR) statt neutral/pano
-      - Glas als eigenes Objekt/Material
-      - Bauteil-Toggles über Objekt-Namen (DACH, AUSSENWAND, ...)
-  -->
 </body>
 </html>
-
