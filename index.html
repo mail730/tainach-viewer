@@ -22,14 +22,7 @@
 html,body{margin:0;height:100%;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto;}
 model-viewer{width:100%;height:100vh;display:block;background:radial-gradient(1200px 700px at 50% 25%, rgba(255,255,255,.07), rgba(0,0,0,.92));}
 
-.ui{
-  position:fixed;
-  left:8px;
-  right:8px;
-  top:8px;
-  z-index:20;
-  pointer-events:none;
-}
+.ui{position:fixed;left:8px;right:8px;top:8px;z-index:20;pointer-events:none;}
 .panel{
   pointer-events:auto;
   background:var(--panel);
@@ -38,72 +31,36 @@ model-viewer{width:100%;height:100vh;display:block;background:radial-gradient(12
   backdrop-filter:blur(12px);
   padding:10px;
   color:var(--txt);
-  max-width:520px;
+  max-width:560px;
 }
-.title{
-  font-size:14px;
-  font-weight:800;
-  margin:0 0 6px 0;
-}
-.row{
-  display:flex;
-  gap:6px;
-  flex-wrap:wrap;
-  align-items:center;
-  margin-bottom:6px;
-}
+.title{font-size:14px;font-weight:800;margin:0 0 6px 0;}
+
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px;}
 .pill{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  padding:6px 10px;
-  border-radius:999px;
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 10px;border-radius:999px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.08);
-  color:var(--muted);
-  font-size:11px;
-  user-select:none;
+  color:var(--muted);font-size:11px;user-select:none;
 }
 .dot{width:8px;height:8px;border-radius:50%;background:var(--warn);}
 .dot.ok{background:var(--good);}
 .dot.bad{background:var(--bad);}
 
 button{
-  appearance:none;
-  border:1px solid rgba(255,255,255,.18);
+  appearance:none;border:1px solid rgba(255,255,255,.18);
   background:rgba(255,255,255,.08);
-  color:#fff;
-  border-radius:10px;
-  padding:6px 10px;
-  font-size:11px;
-  cursor:pointer;
+  color:#fff;border-radius:10px;
+  padding:6px 10px;font-size:11px;cursor:pointer;
 }
 button:active{transform:scale(.97)}
 
-.sliderRow{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  margin-bottom:6px;
-}
-.sliderRow label{
-  font-size:11px;
-  color:var(--muted);
-  width:46px;
-}
-input[type="range"]{
-  flex:1;
-  height:22px;
-}
-.value{
-  font-size:11px;
-  width:46px;
-  text-align:right;
-  color:var(--muted);
-}
-@media(min-width:700px){
-  .panel{max-width:520px}
-}
+.sliderRow{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.sliderRow label{font-size:11px;color:var(--muted);width:52px;}
+input[type="range"]{flex:1;height:22px;}
+.value{font-size:11px;width:64px;text-align:right;color:var(--muted);}
+
+@media(min-width:700px){.panel{max-width:560px}}
 </style>
 </head>
 
@@ -125,10 +82,11 @@ input[type="range"]{
       <button id="fs">Full</button>
     </div>
 
+    <!-- STARTWERTE: Scale höher, Yaw -90 -->
     <div class="sliderRow">
       <label>Scale</label>
-      <input id="scale" type="range" min="1" max="30" step="1" value="7"/>
-      <div class="value" id="scaleVal">7</div>
+      <input id="scale" type="range" min="6" max="20" step="1" value="12"/>
+      <div class="value" id="scaleVal">12x</div>
     </div>
 
     <div class="sliderRow">
@@ -137,17 +95,32 @@ input[type="range"]{
       <div class="value" id="yawVal">-90°</div>
     </div>
 
+    <!-- Position (wirkt jetzt, weil camera-target folgt) -->
     <div class="sliderRow">
       <label>X</label>
-      <input id="tx" type="range" min="-40" max="40" step="0.5" value="0"/>
+      <input id="tx" type="range" min="-60" max="60" step="0.5" value="0"/>
       <div class="value" id="txVal">0.0m</div>
     </div>
 
     <div class="sliderRow">
       <label>Z</label>
-      <input id="tz" type="range" min="-60" max="60" step="0.5" value="-16"/>
+      <input id="tz" type="range" min="-80" max="80" step="0.5" value="-16"/>
       <div class="value" id="tzVal">-16.0m</div>
     </div>
+
+    <!-- Weitblick -->
+    <div class="sliderRow">
+      <label>Zoom</label>
+      <input id="dist" type="range" min="30" max="800" step="5" value="220"/>
+      <div class="value" id="distVal">220m</div>
+    </div>
+
+    <div class="sliderRow">
+      <label>FOV</label>
+      <input id="fov" type="range" min="20" max="70" step="1" value="45"/>
+      <div class="value" id="fovVal">45°</div>
+    </div>
+
   </div>
 </div>
 
@@ -170,13 +143,14 @@ input[type="range"]{
   skybox-image="TAINACH_PANO.jpg"
 
   orientation="90deg -90deg 0deg"
-  scale="7 7 7"
+  scale="12 12 12"
   translation="0m 0m -16m"
 
-  camera-orbit="45deg 65deg 120m"
+  camera-target="0m 0m -16m"
+  camera-orbit="45deg 65deg 220m"
   min-camera-orbit="auto auto 0.2m"
-  max-camera-orbit="auto auto 2000m"
-  field-of-view="40deg"
+  max-camera-orbit="auto auto 5000m"
+  field-of-view="45deg"
 ></model-viewer>
 
 <script>
@@ -190,16 +164,21 @@ const pTxt = document.getElementById("pTxt");
 const gDot = document.getElementById("gDot");
 const gTxt = document.getElementById("gTxt");
 
-// Controls
+// Inputs
 const scale = document.getElementById("scale");
 const yaw = document.getElementById("yaw");
 const tx = document.getElementById("tx");
 const tz = document.getElementById("tz");
+const dist = document.getElementById("dist");
+const fov = document.getElementById("fov");
 
+// Labels
 const scaleVal = document.getElementById("scaleVal");
 const yawVal = document.getElementById("yawVal");
 const txVal = document.getElementById("txVal");
 const tzVal = document.getElementById("tzVal");
+const distVal = document.getElementById("distVal");
+const fovVal = document.getElementById("fovVal");
 
 function parseTranslation(str){
   const parts = String(str || "0m 0m 0m").trim().split(/\s+/);
@@ -208,26 +187,9 @@ function parseTranslation(str){
 }
 function setTranslation(x,y,z){
   mv.setAttribute("translation", `${x}m ${y}m ${z}m`);
+  // EXTREM WICHTIG: Kamera-Ziel folgt -> X/Z wirkt sofort sichtbar
+  mv.setAttribute("camera-target", `${x}m 0m ${z}m`);
   mv.requestRender();
-}
-
-function updateTransform(){
-  const s = Number(scale.value);
-  const y = Number(yaw.value);
-  const x = Number(tx.value);
-  const z = Number(tz.value);
-
-  mv.setAttribute("scale", `${s} ${s} ${s}`);
-  mv.setAttribute("orientation", `90deg ${y}deg 0deg`);
-
-  // Keep current Y, update X/Z
-  const t = parseTranslation(mv.getAttribute("translation"));
-  setTranslation(x, t.y, z);
-
-  scaleVal.textContent = String(s);
-  yawVal.textContent = `${y}°`;
-  txVal.textContent = `${x.toFixed(1)}m`;
-  tzVal.textContent = `${z.toFixed(1)}m`;
 }
 
 async function headOk(rel){
@@ -238,24 +200,56 @@ async function headOk(rel){
   }catch(e){ return false; }
 }
 
-// Boden setzen: minY -> 0 (wenn API verfügbar)
+// Boden setzen: minY -> 0
 function setGround(){
-  // getBoundingBox ist in neueren model-viewer Versionen vorhanden, aber nicht überall garantiert
   const bbox = (typeof mv.getBoundingBox === "function") ? mv.getBoundingBox() : null;
-
   if (!bbox || !bbox.min || typeof bbox.min.y !== "number"){
     gDot.className = "dot bad";
     gTxt.textContent = "Boden: n/a";
     return;
   }
-
   const minY = bbox.min.y;
   const t = parseTranslation(mv.getAttribute("translation"));
-  const newY = t.y - minY; // shift up/down so minY becomes 0
-  setTranslation(t.x, newY, t.z);
-
+  const newY = t.y - minY;
+  mv.setAttribute("translation", `${t.x}m ${newY}m ${t.z}m`);
+  // camera-target bleibt auf X/Z (Y=0 für intuitive Navigation)
+  mv.setAttribute("camera-target", `${t.x}m 0m ${t.z}m`);
   gDot.className = "dot ok";
-  gTxt.textContent = `Boden: ok`;
+  gTxt.textContent = "Boden: ok";
+}
+
+function setCameraDistance(meters){
+  // Wir behalten Winkel, ändern nur Radius (dist)
+  const orbit = mv.getCameraOrbit();
+  mv.cameraOrbit = `${orbit.theta}rad ${orbit.phi}rad ${meters}m`;
+}
+
+function updateAll(){
+  const s = Number(scale.value);
+  const y = Number(yaw.value);
+  const x = Number(tx.value);
+  const z = Number(tz.value);
+  const d = Number(dist.value);
+  const f = Number(fov.value);
+
+  mv.setAttribute("scale", `${s} ${s} ${s}`);
+  mv.setAttribute("orientation", `90deg ${y}deg 0deg`);
+
+  const t = parseTranslation(mv.getAttribute("translation"));
+  setTranslation(x, t.y, z);
+
+  setCameraDistance(d);
+  mv.fieldOfView = `${f}deg`;
+
+  scaleVal.textContent = `${s}x`;
+  yawVal.textContent = `${y}°`;
+  txVal.textContent = `${x.toFixed(1)}m`;
+  tzVal.textContent = `${z.toFixed(1)}m`;
+  distVal.textContent = `${d}m`;
+  fovVal.textContent = `${f}°`;
+
+  // nach Änderungen Boden nachziehen (nach einem Frame)
+  requestAnimationFrame(() => setGround());
 }
 
 // Events
@@ -267,10 +261,7 @@ mv.addEventListener("load", async () => {
   pDot.className = panoOk ? "dot ok" : "dot bad";
   pTxt.textContent = panoOk ? "Panorama aktiv" : "Panorama fehlt";
 
-  // initial transform + ground
-  updateTransform();
-  // Ground after a frame to ensure bbox is ready
-  requestAnimationFrame(() => setGround());
+  updateAll();
 });
 
 mv.addEventListener("error", (e) => {
@@ -280,14 +271,17 @@ mv.addEventListener("error", (e) => {
 });
 
 // UI handlers
-scale.oninput = () => { updateTransform(); requestAnimationFrame(() => setGround()); };
-yaw.oninput   = () => { updateTransform(); requestAnimationFrame(() => setGround()); };
-tx.oninput    = () => { updateTransform(); requestAnimationFrame(() => setGround()); };
-tz.oninput    = () => { updateTransform(); requestAnimationFrame(() => setGround()); };
+scale.oninput = updateAll;
+yaw.oninput   = updateAll;
+tx.oninput    = updateAll;
+tz.oninput    = updateAll;
+dist.oninput  = updateAll;
+fov.oninput   = updateAll;
 
 document.getElementById("reset").onclick = () => {
-  mv.cameraOrbit = "45deg 65deg 120m";
-  mv.fieldOfView = "40deg";
+  // sinnvolle Default-Ansicht für "Weitblick"
+  mv.cameraOrbit = "45deg 65deg 220m";
+  mv.fieldOfView = "45deg";
 };
 
 document.getElementById("rotateBtn").onclick = () => {
@@ -302,7 +296,7 @@ document.getElementById("fs").onclick = () => {
   else document.exitFullscreen().catch(()=>{});
 };
 
-// Ensure start defaults are exactly as requested
+// Sicherstellen: Yaw wirklich -90 beim Start
 yaw.value = "-90";
 yawVal.textContent = "-90°";
 </script>
