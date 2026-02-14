@@ -21,7 +21,6 @@
 html,body{margin:0;height:100%;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto;}
 model-viewer{width:100%;height:100vh;display:block;background:radial-gradient(1200px 700px at 50% 25%, rgba(255,255,255,.07), rgba(0,0,0,.92));}
 
-/* Tiny top bar */
 .topbar{
   position:fixed; left:8px; right:8px; top:8px;
   display:flex; justify-content:space-between; gap:8px; align-items:center;
@@ -48,7 +47,6 @@ model-viewer{width:100%;height:100vh;display:block;background:radial-gradient(12
 }
 .btn:active{transform:scale(.97)}
 
-/* Collapsible panel */
 .panel{
   position:fixed;
   left:8px; right:8px; top:52px;
@@ -62,15 +60,11 @@ model-viewer{width:100%;height:100vh;display:block;background:radial-gradient(12
   padding:10px;
   max-width:560px;
 }
-.panel.collapsed{
-  padding:8px 10px;
-}
+.panel.collapsed{padding:8px 10px;}
 .panel.collapsed .content{display:none;}
-.panelHeader{
-  display:flex; align-items:center; justify-content:space-between; gap:10px;
-}
+.header{display:flex;align-items:center;justify-content:space-between;gap:10px;}
 .title{font-size:13px;font-weight:800;margin:0;}
-.subtitle{font-size:11px;color:var(--muted); margin:0;}
+.subtitle{font-size:11px;color:var(--muted);margin:0;}
 
 .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;}
 .sliderRow{display:flex;align-items:center;gap:8px;margin-top:8px;}
@@ -78,31 +72,28 @@ model-viewer{width:100%;height:100vh;display:block;background:radial-gradient(12
 input[type="range"]{flex:1;height:22px;}
 .value{font-size:11px;width:64px;text-align:right;color:var(--muted);}
 
-/* Desktop: panel left fixed */
 @media (min-width: 900px){
-  .topbar{left:12px;right:12px;top:12px}
   .panel{left:12px;right:auto;top:60px;width:520px}
+  .topbar{left:12px;right:12px;top:12px}
 }
 </style>
 </head>
 
 <body>
 
-<!-- Tiny top bar with status + menu button -->
 <div class="topbar">
   <div class="badges">
     <span class="pill"><span id="mDot" class="dot"></span><span id="mTxt">Lädt…</span></span>
-    <span class="pill"><span id="pDot" class="dot"></span><span id="pTxt">Panorama…</span></span>
+    <span class="pill"><span id="pDot" class="dot"></span><span id="pTxt">Pano: prüfen…</span></span>
   </div>
   <button id="togglePanel" class="btn" type="button">☰ Menü</button>
 </div>
 
-<!-- Collapsible control panel -->
 <div id="panel" class="panel collapsed">
-  <div class="panelHeader">
+  <div class="header">
     <div>
       <div class="title">HAUS TAINACH · 360°</div>
-      <div class="subtitle">Scale · Yaw · Zoom · FOV</div>
+      <div class="subtitle">Pano Toggle muss sichtbar reagieren</div>
     </div>
     <div class="row" style="margin-top:0">
       <button id="reset" class="btn" type="button">Reset</button>
@@ -112,6 +103,11 @@ input[type="range"]{flex:1;height:22px;}
   </div>
 
   <div class="content">
+    <div class="row">
+      <button id="panoOn"  class="btn" type="button">Pano ON</button>
+      <button id="panoOff" class="btn" type="button">Pano OFF</button>
+    </div>
+
     <div class="sliderRow">
       <label>Scale</label>
       <input id="scale" type="range" min="6" max="20" step="1" value="12"/>
@@ -153,8 +149,7 @@ input[type="range"]{flex:1;height:22px;}
   shadow-intensity="0.90"
   shadow-softness="0.65"
 
-  environment-image="TAINACH_PANO.jpg"
-  skybox-image="TAINACH_PANO.jpg"
+  environment-image="neutral"
 
   orientation="90deg -90deg 0deg"
   scale="12 12 12"
@@ -174,30 +169,30 @@ const mTxt = document.getElementById("mTxt");
 const pDot = document.getElementById("pDot");
 const pTxt = document.getElementById("pTxt");
 
-// Panel toggle
+// Panel
 const panel = document.getElementById("panel");
-document.getElementById("togglePanel").onclick = () => {
-  panel.classList.toggle("collapsed");
-};
+document.getElementById("togglePanel").onclick = () => panel.classList.toggle("collapsed");
 
 // Inputs
 const scale = document.getElementById("scale");
-const yaw = document.getElementById("yaw");
-const dist = document.getElementById("dist");
-const fov = document.getElementById("fov");
+const yaw   = document.getElementById("yaw");
+const dist  = document.getElementById("dist");
+const fov   = document.getElementById("fov");
 
 // Labels
 const scaleVal = document.getElementById("scaleVal");
-const yawVal = document.getElementById("yawVal");
-const distVal = document.getElementById("distVal");
-const fovVal = document.getElementById("fovVal");
+const yawVal   = document.getElementById("yawVal");
+const distVal  = document.getElementById("distVal");
+const fovVal   = document.getElementById("fovVal");
+
+const PANO_FILE = "TAINACH_PANO.jpg";
 
 async function headOk(rel){
   try{
     const url = new URL(rel, location.href).toString();
     const r = await fetch(url, { method:"HEAD", cache:"no-store" });
     return r.ok;
-  }catch(e){ return false; }
+  }catch{ return false; }
 }
 
 function setCameraDistance(meters){
@@ -217,49 +212,78 @@ function updateAll(){
   mv.fieldOfView = `${f}deg`;
 
   scaleVal.textContent = `${s}x`;
-  yawVal.textContent = `${y}°`;
-  distVal.textContent = `${d}m`;
-  fovVal.textContent = `${f}°`;
+  yawVal.textContent   = `${y}°`;
+  distVal.textContent  = `${d}m`;
+  fovVal.textContent   = `${f}°`;
 }
 
-mv.addEventListener("load", async () => {
-  mDot.className = "dot ok";
-  mTxt.textContent = "Modell bereit";
+async function panoOn(){
+  const ok = await headOk(PANO_FILE);
+  if (!ok){
+    pDot.className = "dot bad";
+    pTxt.textContent = `Pano fehlt: ${PANO_FILE}`;
+    // fallback
+    mv.setAttribute("environment-image","neutral");
+    mv.removeAttribute("skybox-image");
+    return;
+  }
+  mv.setAttribute("environment-image", PANO_FILE);
+  mv.setAttribute("skybox-image", PANO_FILE);
+  pDot.className = "dot ok";
+  pTxt.textContent = "Pano: ON";
+  mv.requestRender();
+}
 
-  const panoOk = await headOk("TAINACH_PANO.jpg");
-  pDot.className = panoOk ? "dot ok" : "dot bad";
-  pTxt.textContent = panoOk ? "Panorama aktiv" : "Panorama fehlt";
+function panoOff(){
+  mv.setAttribute("environment-image","neutral");
+  mv.removeAttribute("skybox-image");
+  pDot.className = "dot ok";
+  pTxt.textContent = "Pano: OFF";
+  mv.requestRender();
+}
 
-  // Ensure yaw start -90° (requested)
-  yaw.value = "-90";
-  updateAll();
-});
-
-mv.addEventListener("error", (e) => {
-  mDot.className = "dot bad";
-  mTxt.textContent = "Fehler";
-  console.error(e);
-});
-
-scale.oninput = updateAll;
-yaw.oninput   = updateAll;
-dist.oninput  = updateAll;
-fov.oninput   = updateAll;
+// Buttons
+document.getElementById("panoOn").onclick  = () => panoOn();
+document.getElementById("panoOff").onclick = () => panoOff();
 
 document.getElementById("reset").onclick = () => {
   mv.cameraOrbit = "45deg 65deg 320m";
   mv.fieldOfView = "50deg";
 };
-
 document.getElementById("rotateBtn").onclick = () => {
   if (mv.hasAttribute("auto-rotate")) mv.removeAttribute("auto-rotate");
   else mv.setAttribute("auto-rotate","");
 };
-
 document.getElementById("fs").onclick = () => {
   if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
   else document.exitFullscreen().catch(()=>{});
 };
+
+// Events
+mv.addEventListener("load", async () => {
+  mDot.className = "dot ok";
+  mTxt.textContent = "Modell bereit";
+
+  // hard-set yaw start -90
+  yaw.value = "-90";
+  updateAll();
+
+  // pano status check + default ON (damit du sofort siehst ob's geht)
+  pDot.className = "dot";
+  pTxt.textContent = "Pano: laden…";
+  await panoOn();
+});
+mv.addEventListener("error", (e) => {
+  mDot.className = "dot bad";
+  mTxt.textContent = "Modell Fehler";
+  console.error(e);
+});
+
+// Slider handlers
+scale.oninput = updateAll;
+yaw.oninput   = updateAll;
+dist.oninput  = updateAll;
+fov.oninput   = updateAll;
 </script>
 
 </body>
