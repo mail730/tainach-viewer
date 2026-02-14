@@ -16,7 +16,7 @@
     html,body{margin:0;height:100%;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
     model-viewer{width:100%;height:100vh;display:block;background:radial-gradient(1200px 700px at 50% 25%, rgba(255,255,255,.07), rgba(0,0,0,.92));}
     .ui{position:fixed;left:12px;top:12px;right:12px;display:flex;gap:12px;pointer-events:none;z-index:20;}
-    .panel{pointer-events:auto;background:var(--panel);border:1px solid var(--stroke);border-radius:var(--r);box-shadow:var(--shadow);backdrop-filter:blur(10px);padding:12px;max-width:min(720px,100%);color:var(--txt);}
+    .panel{pointer-events:auto;background:var(--panel);border:1px solid var(--stroke);border-radius:var(--r);box-shadow:var(--shadow);backdrop-filter:blur(10px);padding:12px;max-width:min(760px,100%);color:var(--txt);}
     .title{display:flex;align-items:baseline;gap:10px;font-weight:900;letter-spacing:.2px}
     .subtitle{font-weight:700;opacity:.65}
     .sub{margin:6px 0 10px;color:var(--muted);font-size:12px;line-height:1.25;}
@@ -39,30 +39,45 @@
     <div class="panel">
       <div class="title">HAUS TAINACH <span class="subtitle">· 360° Panorama + 3D</span></div>
       <div class="sub">
-        Dateien im Repo-Root: <b>HAUS_TAINACH.glb</b> &nbsp;|&nbsp; <b>TAINACH_PANO.jpg</b> (2:1 equirectangular).
+        Repo-Root Dateien: <b>HAUS_TAINACH.glb</b> &nbsp;|&nbsp; <b>TAINACH_PANO.jpg</b> (2:1 equirectangular).<br>
+        Fix: Modell wird nach dem Laden automatisch auf den Boden gesetzt (minY → 0) und Zoom nach außen ist stark erhöht.
       </div>
 
       <div class="row" style="margin-bottom:10px">
         <span class="pill"><span id="mDot" class="dot"></span><span id="mTxt">Lädt Modell…</span></span>
         <span class="pill"><span id="pDot" class="dot"></span><span id="pTxt">Panorama prüfen…</span></span>
+        <span class="pill"><span class="dot ok"></span><span id="groundTxt">Boden: …</span></span>
       </div>
 
       <div class="row">
         <button id="reset" type="button">Kamera Reset</button>
         <button id="rotate" type="button">Auto-Rotate: AN</button>
         <button id="fs" type="button">Fullscreen</button>
+        <button id="reGround" type="button">Boden neu setzen</button>
       </div>
 
       <div class="slab">
         <label>Scale</label>
-        <input id="scale" type="range" min="1" max="50" step="1" value="5" />
-        <span class="pill val"><span id="scVal">5</span>x</span>
+        <input id="scale" type="range" min="1" max="50" step="1" value="7" />
+        <span class="pill val"><span id="scVal">7</span>x</span>
       </div>
 
       <div class="slab">
         <label>Yaw</label>
         <input id="yaw" type="range" min="-180" max="180" step="1" value="0" />
         <span class="pill val"><span id="yawVal">0</span>°</span>
+      </div>
+
+      <div class="slab">
+        <label>Zoom</label>
+        <input id="zoom" type="range" min="20" max="800" step="5" value="120" />
+        <span class="pill val"><span id="zoomVal">120</span>m</span>
+      </div>
+
+      <div class="slab">
+        <label>FOV</label>
+        <input id="fov" type="range" min="20" max="60" step="1" value="40" />
+        <span class="pill val"><span id="fovVal">40</span>°</span>
       </div>
     </div>
   </div>
@@ -86,13 +101,13 @@
     environment-image="TAINACH_PANO.jpg"
     skybox-image="TAINACH_PANO.jpg"
 
-    orientation="-90deg 0deg 0deg"
-    scale="5 5 5"
+    orientation="90deg 0deg 0deg"
+    scale="7 7 7"
 
-    camera-orbit="45deg 65deg 20m"
-    min-camera-orbit="auto auto 0.5m"
-    max-camera-orbit="auto auto 500m"
-    field-of-view="30deg"
+    camera-orbit="45deg 65deg 120m"
+    min-camera-orbit="auto auto 0.2m"
+    max-camera-orbit="auto auto 2000m"
+    field-of-view="40deg"
   ></model-viewer>
 
   <script type="module">
@@ -102,6 +117,7 @@
     const mTxt = document.getElementById('mTxt');
     const pDot = document.getElementById('pDot');
     const pTxt = document.getElementById('pTxt');
+    const groundTxt = document.getElementById('groundTxt');
 
     async function headOk(rel){
       const url = new URL(rel, location.href).toString();
@@ -111,8 +127,41 @@
       }catch{ return false; }
     }
 
-    mv.addEventListener('load', () => { mDot.classList.add('ok'); mTxt.textContent = 'Modell bereit'; });
-    mv.addEventListener('error', (e) => { mDot.classList.add('bad'); mTxt.textContent = 'Fehler beim Laden'; console.error(e); });
+    // --- Grounding logic: move model so its minY sits on y=0
+    function parseTranslation(str){
+      const parts = String(str || "0m 0m 0m").trim().split(/\s+/);
+      const n = parts.map(p => parseFloat(p));
+      return { x: n[0] || 0, y: n[1] || 0, z: n[2] || 0 };
+    }
+
+    function setGround(){
+      // Needs model loaded
+      const bbox = mv.getBoundingBox?.();
+      if (!bbox){
+        groundTxt.textContent = "Boden: nicht verfügbar";
+        return;
+      }
+      const minY = bbox.min.y; // meters in model-viewer space
+      const t = parseTranslation(mv.getAttribute('translation'));
+      // shift up by -minY so minY becomes 0
+      const newY = t.y - minY;
+      mv.setAttribute('translation', `${t.x}m ${newY}m ${t.z}m`);
+      groundTxt.textContent = `Boden: ok (ΔY ${(-minY).toFixed(3)}m)`;
+      mv.requestRender();
+    }
+
+    mv.addEventListener('load', () => {
+      mDot.classList.add('ok');
+      mTxt.textContent = 'Modell bereit';
+      // Ground after first render tick
+      requestAnimationFrame(() => setGround());
+    });
+
+    mv.addEventListener('error', (e) => {
+      mDot.classList.add('bad');
+      mTxt.textContent = 'Fehler beim Laden';
+      console.error(e);
+    });
 
     (async () => {
       const ok = await headOk('TAINACH_PANO.jpg');
@@ -120,41 +169,66 @@
       else { pDot.classList.add('bad'); pTxt.textContent = 'TAINACH_PANO.jpg fehlt'; mv.setAttribute('environment-image','neutral'); mv.removeAttribute('skybox-image'); }
     })();
 
+    // Controls
     document.getElementById('reset').onclick = () => {
-      mv.cameraOrbit = "45deg 65deg 20m";
-      mv.fieldOfView = "30deg";
+      mv.cameraOrbit = "45deg 65deg 120m";
+      mv.fieldOfView = "40deg";
     };
-
     document.getElementById('rotate').onclick = (ev) => {
       const on = mv.hasAttribute('auto-rotate');
       if (on){ mv.removeAttribute('auto-rotate'); ev.target.textContent = 'Auto-Rotate: AUS'; }
       else { mv.setAttribute('auto-rotate',''); ev.target.textContent = 'Auto-Rotate: AN'; }
     };
-
     document.getElementById('fs').onclick = async () => {
       try{
         if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
         else await document.exitFullscreen();
       }catch{}
     };
+    document.getElementById('reGround').onclick = () => setGround();
 
+    // Scale slider
     const scale = document.getElementById('scale');
     const scVal = document.getElementById('scVal');
     function setScale(v){
       mv.setAttribute('scale', `${v} ${v} ${v}`);
       scVal.textContent = String(v);
+      // after rescale, re-ground
+      requestAnimationFrame(() => setGround());
     }
     scale.oninput = () => setScale(Number(scale.value));
     setScale(Number(scale.value));
 
+    // Yaw slider
     const yaw = document.getElementById('yaw');
     const yawVal = document.getElementById('yawVal');
     function setOrientation(yawDeg){
-      mv.setAttribute('orientation', `-90deg ${yawDeg}deg 0deg`);
+      mv.setAttribute('orientation', `90deg ${yawDeg}deg 0deg`);
       yawVal.textContent = String(yawDeg);
+      requestAnimationFrame(() => setGround());
     }
     yaw.oninput = () => setOrientation(Number(yaw.value));
     setOrientation(Number(yaw.value));
+
+    // Zoom slider (camera distance)
+    const zoom = document.getElementById('zoom');
+    const zoomVal = document.getElementById('zoomVal');
+    function setZoom(m){
+      // keep angles, change radius only
+      const orbit = mv.getCameraOrbit();
+      mv.cameraOrbit = `${orbit.theta}rad ${orbit.phi}rad ${m}m`;
+      zoomVal.textContent = String(m);
+    }
+    zoom.oninput = () => setZoom(Number(zoom.value));
+    setZoom(Number(zoom.value));
+
+    // FOV slider
+    const fov = document.getElementById('fov');
+    const fovVal = document.getElementById('fovVal');
+    fov.oninput = () => {
+      mv.fieldOfView = `${Number(fov.value)}deg`;
+      fovVal.textContent = String(fov.value);
+    };
   </script>
 </body>
 </html>
