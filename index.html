@@ -21,6 +21,7 @@
 html,body{margin:0;height:100%;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto;}
 model-viewer{width:100%;height:100vh;display:block;background:radial-gradient(1200px 700px at 50% 25%, rgba(255,255,255,.07), rgba(0,0,0,.92));}
 
+/* Tiny top bar */
 .topbar{
   position:fixed; left:8px; right:8px; top:8px;
   display:flex; justify-content:space-between; gap:8px; align-items:center;
@@ -47,9 +48,23 @@ model-viewer{width:100%;height:100vh;display:block;background:radial-gradient(12
 }
 .btn:active{transform:scale(.97)}
 
+/* ✅ BIG menu button */
+#togglePanel{
+  font-size:18px;              /* bigger icon */
+  padding:12px 14px;           /* bigger hitbox */
+  border-radius:14px;
+  line-height:1;
+  min-width:48px;              /* touch-friendly */
+  min-height:48px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* Collapsible panel */
 .panel{
   position:fixed;
-  left:8px; right:8px; top:52px;
+  left:8px; right:8px; top:60px;
   z-index:25;
   pointer-events:auto;
   background:var(--panel);
@@ -73,7 +88,7 @@ input[type="range"]{flex:1;height:22px;}
 .value{font-size:11px;width:64px;text-align:right;color:var(--muted);}
 
 @media (min-width: 900px){
-  .panel{left:12px;right:auto;top:60px;width:520px}
+  .panel{left:12px;right:auto;top:72px;width:520px}
   .topbar{left:12px;right:12px;top:12px}
 }
 </style>
@@ -86,14 +101,15 @@ input[type="range"]{flex:1;height:22px;}
     <span class="pill"><span id="mDot" class="dot"></span><span id="mTxt">Lädt…</span></span>
     <span class="pill"><span id="pDot" class="dot"></span><span id="pTxt">Pano: prüfen…</span></span>
   </div>
-  <button id="togglePanel" class="btn" type="button">☰ Menü</button>
+  <!-- ✅ Icon bigger -->
+  <button id="togglePanel" class="btn" type="button" aria-label="Menü">☰</button>
 </div>
 
 <div id="panel" class="panel collapsed">
   <div class="header">
     <div>
       <div class="title">HAUS TAINACH · 360°</div>
-      <div class="subtitle">Pano Toggle muss sichtbar reagieren</div>
+      <div class="subtitle">Pano Toggle</div>
     </div>
     <div class="row" style="margin-top:0">
       <button id="reset" class="btn" type="button">Reset</button>
@@ -221,8 +237,7 @@ async function panoOn(){
   const ok = await headOk(PANO_FILE);
   if (!ok){
     pDot.className = "dot bad";
-    pTxt.textContent = `Pano fehlt: ${PANO_FILE}`;
-    // fallback
+    pTxt.textContent = `Pano fehlt`;
     mv.setAttribute("environment-image","neutral");
     mv.removeAttribute("skybox-image");
     return;
@@ -242,7 +257,6 @@ function panoOff(){
   mv.requestRender();
 }
 
-// Buttons
 document.getElementById("panoOn").onclick  = () => panoOn();
 document.getElementById("panoOff").onclick = () => panoOff();
 
@@ -250,36 +264,35 @@ document.getElementById("reset").onclick = () => {
   mv.cameraOrbit = "45deg 65deg 320m";
   mv.fieldOfView = "50deg";
 };
+
 document.getElementById("rotateBtn").onclick = () => {
   if (mv.hasAttribute("auto-rotate")) mv.removeAttribute("auto-rotate");
   else mv.setAttribute("auto-rotate","");
 };
+
 document.getElementById("fs").onclick = () => {
   if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
   else document.exitFullscreen().catch(()=>{});
 };
 
-// Events
 mv.addEventListener("load", async () => {
   mDot.className = "dot ok";
   mTxt.textContent = "Modell bereit";
 
-  // hard-set yaw start -90
-  yaw.value = "-90";
+  yaw.value = "-90"; // startwert fix
   updateAll();
 
-  // pano status check + default ON (damit du sofort siehst ob's geht)
   pDot.className = "dot";
   pTxt.textContent = "Pano: laden…";
   await panoOn();
 });
+
 mv.addEventListener("error", (e) => {
   mDot.className = "dot bad";
   mTxt.textContent = "Modell Fehler";
   console.error(e);
 });
 
-// Slider handlers
 scale.oninput = updateAll;
 yaw.oninput   = updateAll;
 dist.oninput  = updateAll;
