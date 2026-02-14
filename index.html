@@ -34,7 +34,6 @@ model-viewer{width:100%;height:100vh;display:block;background:radial-gradient(12
   max-width:560px;
 }
 .title{font-size:14px;font-weight:800;margin:0 0 6px 0;}
-
 .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px;}
 .pill{
   display:inline-flex;align-items:center;gap:6px;
@@ -59,8 +58,6 @@ button:active{transform:scale(.97)}
 .sliderRow label{font-size:11px;color:var(--muted);width:52px;}
 input[type="range"]{flex:1;height:22px;}
 .value{font-size:11px;width:64px;text-align:right;color:var(--muted);}
-
-@media(min-width:700px){.panel{max-width:560px}}
 </style>
 </head>
 
@@ -72,17 +69,14 @@ input[type="range"]{flex:1;height:22px;}
     <div class="row">
       <span class="pill"><span id="mDot" class="dot"></span><span id="mTxt">Lädt…</span></span>
       <span class="pill"><span id="pDot" class="dot"></span><span id="pTxt">Panorama…</span></span>
-      <span class="pill"><span id="gDot" class="dot"></span><span id="gTxt">Boden…</span></span>
     </div>
 
     <div class="row">
       <button id="reset">Reset</button>
       <button id="rotateBtn">Rotate</button>
-      <button id="groundBtn">Boden</button>
       <button id="fs">Full</button>
     </div>
 
-    <!-- STARTWERTE: Scale höher, Yaw -90 -->
     <div class="sliderRow">
       <label>Scale</label>
       <input id="scale" type="range" min="6" max="20" step="1" value="12"/>
@@ -95,30 +89,16 @@ input[type="range"]{flex:1;height:22px;}
       <div class="value" id="yawVal">-90°</div>
     </div>
 
-    <!-- Position (wirkt jetzt, weil camera-target folgt) -->
-    <div class="sliderRow">
-      <label>X</label>
-      <input id="tx" type="range" min="-60" max="60" step="0.5" value="0"/>
-      <div class="value" id="txVal">0.0m</div>
-    </div>
-
-    <div class="sliderRow">
-      <label>Z</label>
-      <input id="tz" type="range" min="-80" max="80" step="0.5" value="-16"/>
-      <div class="value" id="tzVal">-16.0m</div>
-    </div>
-
-    <!-- Weitblick -->
     <div class="sliderRow">
       <label>Zoom</label>
-      <input id="dist" type="range" min="30" max="800" step="5" value="220"/>
-      <div class="value" id="distVal">220m</div>
+      <input id="dist" type="range" min="40" max="1200" step="10" value="320"/>
+      <div class="value" id="distVal">320m</div>
     </div>
 
     <div class="sliderRow">
       <label>FOV</label>
-      <input id="fov" type="range" min="20" max="70" step="1" value="45"/>
-      <div class="value" id="fovVal">45°</div>
+      <input id="fov" type="range" min="25" max="70" step="1" value="50"/>
+      <div class="value" id="fovVal">50°</div>
     </div>
 
   </div>
@@ -127,6 +107,7 @@ input[type="range"]{flex:1;height:22px;}
 <model-viewer
   id="mv"
   src="HAUS_TAINACH.glb"
+
   camera-controls
   auto-rotate
   rotation-per-second="10deg"
@@ -144,53 +125,33 @@ input[type="range"]{flex:1;height:22px;}
 
   orientation="90deg -90deg 0deg"
   scale="12 12 12"
-  translation="0m 0m -16m"
 
-  camera-target="0m 0m -16m"
-  camera-orbit="45deg 65deg 220m"
+  camera-orbit="45deg 65deg 320m"
   min-camera-orbit="auto auto 0.2m"
-  max-camera-orbit="auto auto 5000m"
-  field-of-view="45deg"
+  max-camera-orbit="auto auto 8000m"
+  field-of-view="50deg"
 ></model-viewer>
 
 <script>
 const mv = document.getElementById("mv");
 
-// Status UI
+// Status
 const mDot = document.getElementById("mDot");
 const mTxt = document.getElementById("mTxt");
 const pDot = document.getElementById("pDot");
 const pTxt = document.getElementById("pTxt");
-const gDot = document.getElementById("gDot");
-const gTxt = document.getElementById("gTxt");
 
 // Inputs
 const scale = document.getElementById("scale");
 const yaw = document.getElementById("yaw");
-const tx = document.getElementById("tx");
-const tz = document.getElementById("tz");
 const dist = document.getElementById("dist");
 const fov = document.getElementById("fov");
 
 // Labels
 const scaleVal = document.getElementById("scaleVal");
 const yawVal = document.getElementById("yawVal");
-const txVal = document.getElementById("txVal");
-const tzVal = document.getElementById("tzVal");
 const distVal = document.getElementById("distVal");
 const fovVal = document.getElementById("fovVal");
-
-function parseTranslation(str){
-  const parts = String(str || "0m 0m 0m").trim().split(/\s+/);
-  const n = parts.map(p => parseFloat(p));
-  return { x: n[0] || 0, y: n[1] || 0, z: n[2] || 0 };
-}
-function setTranslation(x,y,z){
-  mv.setAttribute("translation", `${x}m ${y}m ${z}m`);
-  // EXTREM WICHTIG: Kamera-Ziel folgt -> X/Z wirkt sofort sichtbar
-  mv.setAttribute("camera-target", `${x}m 0m ${z}m`);
-  mv.requestRender();
-}
 
 async function headOk(rel){
   try{
@@ -200,26 +161,7 @@ async function headOk(rel){
   }catch(e){ return false; }
 }
 
-// Boden setzen: minY -> 0
-function setGround(){
-  const bbox = (typeof mv.getBoundingBox === "function") ? mv.getBoundingBox() : null;
-  if (!bbox || !bbox.min || typeof bbox.min.y !== "number"){
-    gDot.className = "dot bad";
-    gTxt.textContent = "Boden: n/a";
-    return;
-  }
-  const minY = bbox.min.y;
-  const t = parseTranslation(mv.getAttribute("translation"));
-  const newY = t.y - minY;
-  mv.setAttribute("translation", `${t.x}m ${newY}m ${t.z}m`);
-  // camera-target bleibt auf X/Z (Y=0 für intuitive Navigation)
-  mv.setAttribute("camera-target", `${t.x}m 0m ${t.z}m`);
-  gDot.className = "dot ok";
-  gTxt.textContent = "Boden: ok";
-}
-
 function setCameraDistance(meters){
-  // Wir behalten Winkel, ändern nur Radius (dist)
   const orbit = mv.getCameraOrbit();
   mv.cameraOrbit = `${orbit.theta}rad ${orbit.phi}rad ${meters}m`;
 }
@@ -227,32 +169,20 @@ function setCameraDistance(meters){
 function updateAll(){
   const s = Number(scale.value);
   const y = Number(yaw.value);
-  const x = Number(tx.value);
-  const z = Number(tz.value);
   const d = Number(dist.value);
   const f = Number(fov.value);
 
   mv.setAttribute("scale", `${s} ${s} ${s}`);
   mv.setAttribute("orientation", `90deg ${y}deg 0deg`);
-
-  const t = parseTranslation(mv.getAttribute("translation"));
-  setTranslation(x, t.y, z);
-
   setCameraDistance(d);
   mv.fieldOfView = `${f}deg`;
 
   scaleVal.textContent = `${s}x`;
   yawVal.textContent = `${y}°`;
-  txVal.textContent = `${x.toFixed(1)}m`;
-  tzVal.textContent = `${z.toFixed(1)}m`;
   distVal.textContent = `${d}m`;
   fovVal.textContent = `${f}°`;
-
-  // nach Änderungen Boden nachziehen (nach einem Frame)
-  requestAnimationFrame(() => setGround());
 }
 
-// Events
 mv.addEventListener("load", async () => {
   mDot.className = "dot ok";
   mTxt.textContent = "Modell bereit";
@@ -270,18 +200,14 @@ mv.addEventListener("error", (e) => {
   console.error(e);
 });
 
-// UI handlers
 scale.oninput = updateAll;
 yaw.oninput   = updateAll;
-tx.oninput    = updateAll;
-tz.oninput    = updateAll;
 dist.oninput  = updateAll;
 fov.oninput   = updateAll;
 
 document.getElementById("reset").onclick = () => {
-  // sinnvolle Default-Ansicht für "Weitblick"
-  mv.cameraOrbit = "45deg 65deg 220m";
-  mv.fieldOfView = "45deg";
+  mv.cameraOrbit = "45deg 65deg 320m";
+  mv.fieldOfView = "50deg";
 };
 
 document.getElementById("rotateBtn").onclick = () => {
@@ -289,16 +215,15 @@ document.getElementById("rotateBtn").onclick = () => {
   else mv.setAttribute("auto-rotate","");
 };
 
-document.getElementById("groundBtn").onclick = () => setGround();
-
 document.getElementById("fs").onclick = () => {
   if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
   else document.exitFullscreen().catch(()=>{});
 };
 
-// Sicherstellen: Yaw wirklich -90 beim Start
+// Sicher: Startwert Yaw = -90
 yaw.value = "-90";
 yawVal.textContent = "-90°";
+updateAll();
 </script>
 </body>
 </html>
