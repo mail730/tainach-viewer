@@ -1,303 +1,183 @@
 <!doctype html>
 <html lang="de">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-<title>HAUS TAINACH</title>
-<script type="module" src="https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>HAUS TAINACH – Viewer Hub</title>
+  <style>
+    :root{
+      --bg:#06070a;
+      --panel:rgba(18,18,22,.78);
+      --stroke:rgba(255,255,255,.14);
+      --txt:#fff;
+      --muted:rgba(255,255,255,.70);
+      --good:#47e37b;
+      --warn:#f7c948;
+      --bad:#ff5d5d;
+      --red:#e53935;
+      --r:18px;
+    }
+    html,body{margin:0;height:100%;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto;color:var(--txt);}
+    .bg{
+      min-height:100%;
+      background:
+        radial-gradient(1100px 600px at 50% 20%, rgba(255,255,255,.10), rgba(0,0,0,.92)),
+        radial-gradient(900px 500px at 10% 90%, rgba(229,57,53,.10), rgba(0,0,0,0));
+      display:flex; align-items:center; justify-content:center;
+      padding:28px;
+    }
+    .wrap{width:min(1050px, 100%);}
+    .top{
+      display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:wrap;
+      margin-bottom:14px;
+    }
+    h1{margin:0;font-size:22px;font-weight:950;letter-spacing:.2px;}
+    .sub{margin:6px 0 0 0;color:var(--muted);font-size:13px;line-height:1.35;}
+    .pills{display:flex;gap:8px;flex-wrap:wrap}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 12px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.10);
+      color:var(--muted); font-size:12px;
+      backdrop-filter: blur(10px);
+    }
+    .dot{width:9px;height:9px;border-radius:50%;background:var(--warn);}
+    .dot.ok{background:var(--good);}
+    .dot.bad{background:var(--bad);}
 
-<style>
-:root{
-  --bg:#07080a;
-  --panel:rgba(20,20,22,.78);
-  --stroke:rgba(255,255,255,.12);
-  --txt:#fff;
-  --muted:rgba(255,255,255,.68);
-  --good:#4be37a;
-  --warn:#f7c948;
-  --bad:#ff5d5d;
-  --r:14px;
-}
-html,body{margin:0;height:100%;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto;}
-model-viewer{width:100%;height:100vh;display:block;background:radial-gradient(1200px 700px at 50% 25%, rgba(255,255,255,.07), rgba(0,0,0,.92));}
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap:14px;
+    }
+    @media (max-width: 900px){ .grid{grid-template-columns:1fr;} }
 
-/* Tiny top bar */
-.topbar{
-  position:fixed; left:8px; right:8px; top:8px;
-  display:flex; justify-content:space-between; gap:8px; align-items:center;
-  z-index:30; pointer-events:none;
-}
-.badges{display:flex; gap:6px; flex-wrap:wrap; pointer-events:auto;}
-.pill{
-  display:inline-flex;align-items:center;gap:6px;
-  padding:6px 10px;border-radius:999px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.10);
-  color:var(--muted);font-size:11px;user-select:none;
-}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--warn);}
-.dot.ok{background:var(--good);}
-.dot.bad{background:var(--bad);}
-
-.btn{
-  pointer-events:auto;
-  appearance:none;border:1px solid rgba(255,255,255,.18);
-  background:rgba(255,255,255,.10);
-  color:#fff;border-radius:12px;
-  padding:7px 10px;font-size:11px;cursor:pointer;
-}
-.btn:active{transform:scale(.97)}
-
-/* ✅ BIG menu button */
-#togglePanel{
-  font-size:18px;              /* bigger icon */
-  padding:12px 14px;           /* bigger hitbox */
-  border-radius:14px;
-  line-height:1;
-  min-width:48px;              /* touch-friendly */
-  min-height:48px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-/* Collapsible panel */
-.panel{
-  position:fixed;
-  left:8px; right:8px; top:60px;
-  z-index:25;
-  pointer-events:auto;
-  background:var(--panel);
-  border:1px solid var(--stroke);
-  border-radius:var(--r);
-  backdrop-filter:blur(12px);
-  color:var(--txt);
-  padding:10px;
-  max-width:560px;
-}
-.panel.collapsed{padding:8px 10px;}
-.panel.collapsed .content{display:none;}
-.header{display:flex;align-items:center;justify-content:space-between;gap:10px;}
-.title{font-size:13px;font-weight:800;margin:0;}
-.subtitle{font-size:11px;color:var(--muted);margin:0;}
-
-.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;}
-.sliderRow{display:flex;align-items:center;gap:8px;margin-top:8px;}
-.sliderRow label{font-size:11px;color:var(--muted);width:52px;}
-input[type="range"]{flex:1;height:22px;}
-.value{font-size:11px;width:64px;text-align:right;color:var(--muted);}
-
-@media (min-width: 900px){
-  .panel{left:12px;right:auto;top:72px;width:520px}
-  .topbar{left:12px;right:12px;top:12px}
-}
-</style>
+    .card{
+      background:var(--panel);
+      border:1px solid var(--stroke);
+      border-radius:var(--r);
+      padding:16px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 20px 50px rgba(0,0,0,.35);
+      display:flex; flex-direction:column; gap:10px;
+      min-height: 180px;
+    }
+    .card h2{margin:0;font-size:16px;font-weight:900}
+    .card p{margin:0;color:var(--muted);font-size:13px;line-height:1.35}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:auto}
+    .btn{
+      appearance:none; border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.10); color:#fff;
+      border-radius:14px; padding:10px 12px;
+      font-size:13px; cursor:pointer;
+      text-decoration:none; display:inline-flex; align-items:center; gap:8px;
+      user-select:none;
+    }
+    .btn.primary{
+      background:var(--red);
+      border:1px solid rgba(255,255,255,.28);
+      box-shadow: 0 10px 28px rgba(229,57,53,.22);
+      font-weight:850;
+    }
+    .btn:active{transform:scale(.99)}
+    code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;color:rgba(255,255,255,.75)}
+    .mini{
+      margin-top:12px;
+      color:rgba(255,255,255,.55);
+      font-size:12px;
+      line-height:1.35;
+    }
+  </style>
 </head>
 
 <body>
+  <div class="bg">
+    <div class="wrap">
 
-<div class="topbar">
-  <div class="badges">
-    <span class="pill"><span id="mDot" class="dot"></span><span id="mTxt">Lädt…</span></span>
-    <span class="pill"><span id="pDot" class="dot"></span><span id="pTxt">Pano: prüfen…</span></span>
+      <div class="top">
+        <div>
+          <h1>HAUS TAINACH · Viewer Hub</h1>
+          <p class="sub">
+            Startseite mit Auswahl: Desktop‑Viewer · Mobile‑Viewer · VR (Quest).<br>
+            Repo‑Root Dateien: <code>HAUS_TAINACH.glb</code> · <code>TAINACH_PANO.jpg</code> · <code>desktopvr.html</code> · <code>mobile.html</code> · <code>vr.html</code>
+          </p>
+        </div>
+
+        <div class="pills">
+          <span class="pill"><span id="dDot" class="dot"></span><span id="dTxt">desktopvr.html …</span></span>
+          <span class="pill"><span id="mDot" class="dot"></span><span id="mTxt">mobile.html …</span></span>
+          <span class="pill"><span id="vDot" class="dot"></span><span id="vTxt">vr.html …</span></span>
+          <span class="pill"><span id="gDot" class="dot"></span><span id="gTxt">HAUS_TAINACH.glb …</span></span>
+          <span class="pill"><span id="pDot" class="dot"></span><span id="pTxt">TAINACH_PANO.jpg …</span></span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h2>Desktop Viewer</h2>
+          <p>Für PC/Mac: Model‑Viewer, Panorama‑Toggle, große Controls. Ideal fürs Präsentieren am Bildschirm.</p>
+          <div class="row">
+            <a class="btn primary" href="desktopvr.html">Öffnen</a>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Mobile Viewer</h2>
+          <p>Dein bisheriger Viewer (vorher index.html) – optimiert für Smartphone/Touch.</p>
+          <div class="row">
+            <a class="btn primary" href="mobile.html">Öffnen</a>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>VR (Quest)</h2>
+          <p>Quest‑VR Seite mit Teleport/Walk/Snap‑Turn. Am stabilsten als eigene Seite (nicht im iFrame).</p>
+          <div class="row">
+            <a class="btn primary" href="vr.html">VR öffnen</a>
+            <button id="copyVR" class="btn" type="button">VR Link kopieren</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mini">
+        Tipp: GitHub Pages ist case‑sensitive: <code>HAUS_TAINACH.glb</code> ist nicht <code>haus_tainach.glb</code>.
+      </div>
+
+    </div>
   </div>
-  <!-- ✅ Icon bigger -->
-  <button id="togglePanel" class="btn" type="button" aria-label="Menü">☰</button>
-</div>
 
-<div id="panel" class="panel collapsed">
-  <div class="header">
-    <div>
-      <div class="title">HAUS TAINACH · 360°</div>
-      <div class="subtitle">Pano Toggle</div>
-    </div>
-    <div class="row" style="margin-top:0">
-      <button id="reset" class="btn" type="button">Reset</button>
-      <button id="rotateBtn" class="btn" type="button">Rotate</button>
-      <button id="fs" class="btn" type="button">Full</button>
-    </div>
-  </div>
+  <script>
+    async function headOk(rel){
+      try{
+        const url = new URL(rel, location.href).toString();
+        const r = await fetch(url, { method:"HEAD", cache:"no-store" });
+        return r.ok;
+      }catch{ return false; }
+    }
+    function setStatus(dotId, txtId, ok, labelOk, labelBad){
+      const dot = document.getElementById(dotId);
+      const txt = document.getElementById(txtId);
+      dot.className = "dot " + (ok ? "ok" : "bad");
+      txt.textContent = ok ? labelOk : labelBad;
+    }
+    (async () => {
+      setStatus("dDot","dTxt", await headOk("desktopvr.html"), "desktopvr.html OK", "desktopvr.html FEHLT");
+      setStatus("mDot","mTxt", await headOk("mobile.html"), "mobile.html OK", "mobile.html FEHLT");
+      setStatus("vDot","vTxt", await headOk("vr.html"), "vr.html OK", "vr.html FEHLT");
+      setStatus("gDot","gTxt", await headOk("HAUS_TAINACH.glb"), "GLB OK", "GLB FEHLT");
+      setStatus("pDot","pTxt", await headOk("TAINACH_PANO.jpg"), "PANO OK", "PANO FEHLT");
+    })();
 
-  <div class="content">
-    <div class="row">
-      <button id="panoOn"  class="btn" type="button">Pano ON</button>
-      <button id="panoOff" class="btn" type="button">Pano OFF</button>
-    </div>
-
-    <div class="sliderRow">
-      <label>Scale</label>
-      <input id="scale" type="range" min="6" max="20" step="1" value="12"/>
-      <div class="value" id="scaleVal">12x</div>
-    </div>
-
-    <div class="sliderRow">
-      <label>Yaw</label>
-      <input id="yaw" type="range" min="-180" max="180" step="1" value="-90"/>
-      <div class="value" id="yawVal">-90°</div>
-    </div>
-
-    <div class="sliderRow">
-      <label>Zoom</label>
-      <input id="dist" type="range" min="40" max="1200" step="10" value="320"/>
-      <div class="value" id="distVal">320m</div>
-    </div>
-
-    <div class="sliderRow">
-      <label>FOV</label>
-      <input id="fov" type="range" min="25" max="70" step="1" value="50"/>
-      <div class="value" id="fovVal">50°</div>
-    </div>
-  </div>
-</div>
-
-<model-viewer
-  id="mv"
-  src="HAUS_TAINACH.glb"
-  camera-controls
-  auto-rotate
-  rotation-per-second="10deg"
-  interaction-prompt="none"
-  loading="eager"
-  reveal="auto"
-
-  tone-mapping="aces"
-  exposure="1.10"
-  shadow-intensity="0.90"
-  shadow-softness="0.65"
-
-  environment-image="neutral"
-
-  orientation="90deg -90deg 0deg"
-  scale="12 12 12"
-
-  camera-orbit="45deg 65deg 320m"
-  min-camera-orbit="auto auto 0.2m"
-  max-camera-orbit="auto auto 8000m"
-  field-of-view="50deg"
-></model-viewer>
-
-<script>
-const mv = document.getElementById("mv");
-
-// Status
-const mDot = document.getElementById("mDot");
-const mTxt = document.getElementById("mTxt");
-const pDot = document.getElementById("pDot");
-const pTxt = document.getElementById("pTxt");
-
-// Panel
-const panel = document.getElementById("panel");
-document.getElementById("togglePanel").onclick = () => panel.classList.toggle("collapsed");
-
-// Inputs
-const scale = document.getElementById("scale");
-const yaw   = document.getElementById("yaw");
-const dist  = document.getElementById("dist");
-const fov   = document.getElementById("fov");
-
-// Labels
-const scaleVal = document.getElementById("scaleVal");
-const yawVal   = document.getElementById("yawVal");
-const distVal  = document.getElementById("distVal");
-const fovVal   = document.getElementById("fovVal");
-
-const PANO_FILE = "TAINACH_PANO.jpg";
-
-async function headOk(rel){
-  try{
-    const url = new URL(rel, location.href).toString();
-    const r = await fetch(url, { method:"HEAD", cache:"no-store" });
-    return r.ok;
-  }catch{ return false; }
-}
-
-function setCameraDistance(meters){
-  const orbit = mv.getCameraOrbit();
-  mv.cameraOrbit = `${orbit.theta}rad ${orbit.phi}rad ${meters}m`;
-}
-
-function updateAll(){
-  const s = Number(scale.value);
-  const y = Number(yaw.value);
-  const d = Number(dist.value);
-  const f = Number(fov.value);
-
-  mv.setAttribute("scale", `${s} ${s} ${s}`);
-  mv.setAttribute("orientation", `90deg ${y}deg 0deg`);
-  setCameraDistance(d);
-  mv.fieldOfView = `${f}deg`;
-
-  scaleVal.textContent = `${s}x`;
-  yawVal.textContent   = `${y}°`;
-  distVal.textContent  = `${d}m`;
-  fovVal.textContent   = `${f}°`;
-}
-
-async function panoOn(){
-  const ok = await headOk(PANO_FILE);
-  if (!ok){
-    pDot.className = "dot bad";
-    pTxt.textContent = `Pano fehlt`;
-    mv.setAttribute("environment-image","neutral");
-    mv.removeAttribute("skybox-image");
-    return;
-  }
-  mv.setAttribute("environment-image", PANO_FILE);
-  mv.setAttribute("skybox-image", PANO_FILE);
-  pDot.className = "dot ok";
-  pTxt.textContent = "Pano: ON";
-  mv.requestRender();
-}
-
-function panoOff(){
-  mv.setAttribute("environment-image","neutral");
-  mv.removeAttribute("skybox-image");
-  pDot.className = "dot ok";
-  pTxt.textContent = "Pano: OFF";
-  mv.requestRender();
-}
-
-document.getElementById("panoOn").onclick  = () => panoOn();
-document.getElementById("panoOff").onclick = () => panoOff();
-
-document.getElementById("reset").onclick = () => {
-  mv.cameraOrbit = "45deg 65deg 320m";
-  mv.fieldOfView = "50deg";
-};
-
-document.getElementById("rotateBtn").onclick = () => {
-  if (mv.hasAttribute("auto-rotate")) mv.removeAttribute("auto-rotate");
-  else mv.setAttribute("auto-rotate","");
-};
-
-document.getElementById("fs").onclick = () => {
-  if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
-  else document.exitFullscreen().catch(()=>{});
-};
-
-mv.addEventListener("load", async () => {
-  mDot.className = "dot ok";
-  mTxt.textContent = "Modell bereit";
-
-  yaw.value = "-90"; // startwert fix
-  updateAll();
-
-  pDot.className = "dot";
-  pTxt.textContent = "Pano: laden…";
-  await panoOn();
-});
-
-mv.addEventListener("error", (e) => {
-  mDot.className = "dot bad";
-  mTxt.textContent = "Modell Fehler";
-  console.error(e);
-});
-
-scale.oninput = updateAll;
-yaw.oninput   = updateAll;
-dist.oninput  = updateAll;
-fov.oninput   = updateAll;
-</script>
-
+    document.getElementById("copyVR").onclick = async () => {
+      const url = new URL("vr.html", location.href).toString();
+      try{
+        await navigator.clipboard.writeText(url);
+        alert("VR-Link kopiert:\n" + url);
+      }catch{
+        prompt("Kopiere den VR-Link:", url);
+      }
+    };
+  </script>
 </body>
 </html>
