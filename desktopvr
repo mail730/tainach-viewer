@@ -214,7 +214,7 @@
       <div>
         <h1 class="title">HAUS TAINACH · Desktop</h1>
         <p class="sub">
-          Viewer + Panorama (Skybox) + VR-Link (Quest 3).<br>
+          Viewer + Panorama (Skybox) + VR-Link (Quest).<br>
           Dateien im Repo-Root: <b>HAUS_TAINACH.glb</b> · <b>TAINACH_PANO.jpg</b> · <b>vr.html</b>
         </p>
       </div>
@@ -227,6 +227,7 @@
         <button id="rot" class="btn" type="button">Auto-Rotate: AN</button>
         <button id="fs" class="btn" type="button">Fullscreen</button>
         <button id="openVR" class="btn primary" type="button">VR öffnen</button>
+        <a class="btn" href="index.html" style="text-decoration:none;">Hub</a>
       </div>
 
       <div class="sliderRow">
@@ -266,7 +267,7 @@
       </div>
 
       <div class="small">
-        Hinweis: Die Skybox (Panorama) ist eine Kugel ohne echte Bodenebene – Parallaxe kommt erst mit 3D-Terrain/Photogrammetrie.
+        Hinweis: Skybox-Panorama = Foto auf Kugel (keine echte Bodenparallaxe).
       </div>
     </div>
   </div>
@@ -304,7 +305,6 @@
   </model-viewer>
 
   <script>
-    // -------- Elements
     const mv = document.getElementById('mv');
 
     const panel = document.getElementById('panel');
@@ -341,13 +341,11 @@
     const fsBtn = document.getElementById('fs');
     const openVRBtn = document.getElementById('openVR');
 
-    const MODEL_FILE = "HAUS_TAINACH.glb";
     const PANO_FILE  = "TAINACH_PANO.jpg";
     const VR_PAGE    = "vr.html";
 
     let panoOn = true;
 
-    // -------- Helpers
     async function headOk(rel){
       try{
         const url = new URL(rel, location.href).toString();
@@ -406,7 +404,6 @@
         return;
       }
 
-      // IBL + Background
       mv.setAttribute("environment-image", PANO_FILE);
       mv.setAttribute("skybox-image", PANO_FILE);
 
@@ -415,7 +412,6 @@
       panoBtn.textContent = "Panorama: AN";
     }
 
-    // -------- UI actions
     panoBtn.onclick = async () => setPanorama(!panoOn);
 
     resetBtn.onclick = () => {
@@ -447,12 +443,8 @@
       }catch{}
     };
 
-    openVRBtn.onclick = () => {
-      // VR am stabilsten als eigene Seite öffnen
-      window.location.href = VR_PAGE;
-    };
+    openVRBtn.onclick = () => window.location.href = VR_PAGE;
 
-    // -------- VR support check (Desktop kann "false" sein, Quest Browser meist true)
     (async () => {
       try{
         if (navigator.xr?.isSessionSupported) {
@@ -469,7 +461,6 @@
       }
     })();
 
-    // -------- Model-viewer events
     mv.addEventListener("progress", (ev) => {
       const p = Math.max(0, Math.min(1, ev.detail.totalProgress || 0));
       progBar.style.width = `${Math.round(p * 100)}%`;
@@ -480,8 +471,6 @@
       mDot.className = "dot ok";
       mTxt.textContent = "Modell: bereit";
       prog.style.display = "none";
-
-      // Defaults
       applyAll();
       await setPanorama(true);
     });
@@ -492,7 +481,6 @@
       console.error(e);
     });
 
-    // Sliders
     [scale,yaw,dist,fov,exp,sh].forEach(el => el.addEventListener("input", applyAll));
   </script>
 
