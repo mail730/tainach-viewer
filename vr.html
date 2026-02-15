@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>HAUS TAINACH – VR (Quest 3)</title>
+  <title>HAUS TAINACH – VR (Quest 3 PRO)</title>
 
   <!-- A-Frame (WebXR) -->
   <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
@@ -38,6 +38,7 @@
       border-radius:14px; padding:10px 12px; font-size:12px; line-height:1.35;
       backdrop-filter: blur(10px);
     }
+    .hint b{color:#fff}
   </style>
 </head>
 
@@ -49,10 +50,8 @@
   </div>
 
   <div class="hint">
-    Quest 3 Controls:<br>
-    • Links Stick = Walk<br>
-    • Rechts Stick = Snap Turn<br>
-    • Links Trigger halten/loslassen = Teleport
+    <b>Quest 3:</b> Links Stick = Walk · Rechts Stick = Snap‑Turn · Links Trigger = Teleport<br>
+    <b>A</b> = Menü ein/aus · <b>B</b> = Reset
   </div>
 
   <a-scene
@@ -61,12 +60,13 @@
     background="color: #000">
 
     <a-assets>
-      <img id="pano" src="TAINACH_PANO.jpg" />
+      <!-- Optional: wenn du später TAINACH_PANO_VR.jpg hochlädst (4096x2048), wird VR automatisch leichter -->
+      <img id="panoImg" src="TAINACH_PANO_VR.jpg" crossorigin="anonymous" />
       <a-asset-item id="house" src="HAUS_TAINACH.glb"></a-asset-item>
     </a-assets>
 
     <!-- Panorama -->
-    <a-sky src="#pano" rotation="0 -90 0"></a-sky>
+    <a-sky id="sky" src="#panoImg" rotation="0 -90 0"></a-sky>
 
     <!-- Licht -->
     <a-entity light="type: hemisphere; intensity: 0.95; color: #ffffff; groundColor: #444"></a-entity>
@@ -75,6 +75,7 @@
     <!-- Teleport-Boden -->
     <a-plane
       id="ground"
+      class="teleport-surface"
       rotation="-90 0 0"
       position="0 0 0"
       width="600"
@@ -82,37 +83,63 @@
       color="#111">
     </a-plane>
 
-    <!-- Haus -->
+    <!-- Haus (Rotation wie bei dir: X +90, Y -90) -->
     <a-entity
+      id="houseEnt"
       gltf-model="#house"
       rotation="90 -90 0"
       scale="12 12 12"
       position="0 0 -6">
     </a-entity>
 
-    <!-- Player Rig: wird bewegt + teleportiert -->
-    <a-entity id="player" quest3-locomotion="speed: 1.35; strafeSpeed: 1.15; snapAngle: 30; snapCooldownMs: 320;">
-      <!-- Head/Camera -->
+    <!-- Player Rig -->
+    <a-entity
+      id="player"
+      quest3-locomotion="speed: 1.35; strafeSpeed: 1.15; snapAngle: 30; snapCooldownMs: 320; bounds: 290;">
+
+      <!-- Head -->
       <a-entity id="head" camera look-controls position="0 1.6 0"></a-entity>
 
-      <!-- Left Hand: Teleport (Trigger) -->
+      <!-- Left Hand: Teleport -->
       <a-entity
         id="leftHand"
-        meta-touch-controls="hand: left"
+        oculus-touch-controls="hand: left"
         blink-controls="cameraRig: #player; teleportOrigin: #head; collisionEntities: #ground; button: trigger; snapTurn: false; rotateOnTeleport: true;">
       </a-entity>
 
-      <!-- Right Hand: Snap Turn (über JS) -->
+      <!-- Right Hand: Ray + SnapTurn -->
       <a-entity
         id="rightHand"
-        meta-touch-controls="hand: right">
+        oculus-touch-controls="hand: right"
+        raycaster="objects: .ui; far: 8"
+        cursor="rayOrigin: entity; fuse: false"
+        line="color: #ffffff; opacity: 0.75">
       </a-entity>
+    </a-entity>
+
+    <!-- In-VR Menü (wird vor dich gesetzt, wenn du A drückst) -->
+    <a-entity id="menu" visible="false">
+      <a-plane width="0.62" height="0.28" color="#111" opacity="0.85"></a-plane>
+
+      <a-text value="VR MENU" color="#fff" position="-0.28 0.10 0.01" width="1.2"></a-text>
+
+      <!-- Buttons (class ui => anklickbar mit rechter Ray) -->
+      <a-plane id="btnReset" class="ui" width="0.18" height="0.08" color="#2b2b2b" position="-0.20 0.00 0.01"></a-plane>
+      <a-text value="RESET" color="#fff" position="-0.265 -0.02 0.02" width="0.9"></a-text>
+
+      <a-plane id="btnSpeed" class="ui" width="0.18" height="0.08" color="#2b2b2b" position="0.00 0.00 0.01"></a-plane>
+      <a-text id="txtSpeed" value="SPEED 1.35" color="#fff" position="-0.07 -0.02 0.02" width="1.2"></a-text>
+
+      <a-plane id="btnTurn" class="ui" width="0.18" height="0.08" color="#2b2b2b" position="0.20 0.00 0.01"></a-plane>
+      <a-text id="txtTurn" value="TURN 30" color="#fff" position="0.135 -0.02 0.02" width="1.0"></a-text>
+
+      <a-text value="A: Menü  |  B: Reset" color="#bbb" position="-0.28 -0.11 0.01" width="1.4"></a-text>
     </a-entity>
 
   </a-scene>
 
   <script>
-    // --------- VR Buttons ----------
+    // -------- Buttons (2D Overlay) ----------
     const scene = document.querySelector('a-scene');
     document.getElementById('enterVR').addEventListener('click', () => {
       if (scene && scene.enterVR) scene.enterVR();
@@ -121,46 +148,47 @@
       location.href = 'index.html';
     });
 
-    // --------- Locomotion + Snap Turn (Quest 3) ----------
+    // -------- VR Panorama fallback ----------
+    // Wenn TAINACH_PANO_VR.jpg nicht existiert, fallback auf TAINACH_PANO.jpg
+    const panoImg = document.getElementById('panoImg');
+    panoImg.addEventListener('error', () => {
+      panoImg.src = 'TAINACH_PANO.jpg';
+    });
+
+    // -------- Locomotion + Snap Turn component ----------
     AFRAME.registerComponent('quest3-locomotion', {
       schema: {
-        speed: {default: 1.35},          // m/s
-        strafeSpeed: {default: 1.15},    // m/s
+        speed: {default: 1.35},
+        strafeSpeed: {default: 1.15},
         deadzone: {default: 0.18},
-        snapAngle: {default: 30},        // degrees
-        snapCooldownMs: {default: 320}
+        snapAngle: {default: 30},
+        snapCooldownMs: {default: 320},
+        bounds: {default: 290} // clamp x/z to [-bounds, bounds]
       },
 
       init: function () {
         this.left = {x: 0, y: 0};
         this.rightX = 0;
 
-        this.teleportActive = false;     // true while left trigger held
+        this.teleportActive = false;
         this.lastSnapTime = 0;
 
-        this.head = this.el.querySelector('#head');
-        this.leftHand  = this.el.querySelector('#leftHand');
-        this.rightHand = this.el.querySelector('#rightHand');
+        this.head = document.getElementById('head');
+        this.leftHand  = document.getElementById('leftHand');
+        this.rightHand = document.getElementById('rightHand');
 
-        // LEFT: walk axis + teleport gating (trigger)
         if (this.leftHand) {
-          this.leftHand.addEventListener('thumbstickmoved', (evt) => {
-            this.left.x = evt.detail.x || 0;
-            this.left.y = evt.detail.y || 0;
+          this.leftHand.addEventListener('thumbstickmoved', (e) => {
+            this.left.x = e.detail.x || 0;
+            this.left.y = e.detail.y || 0;
           });
-
-          this.leftHand.addEventListener('triggerdown', () => {
-            this.teleportActive = true;   // Walk aus, damit Teleport sauber bleibt
-          });
-          this.leftHand.addEventListener('triggerup', () => {
-            this.teleportActive = false;
-          });
+          this.leftHand.addEventListener('triggerdown', () => { this.teleportActive = true; });
+          this.leftHand.addEventListener('triggerup',   () => { this.teleportActive = false; });
         }
 
-        // RIGHT: snap-turn axis
         if (this.rightHand) {
-          this.rightHand.addEventListener('thumbstickmoved', (evt) => {
-            this.rightX = evt.detail.x || 0;
+          this.rightHand.addEventListener('thumbstickmoved', (e) => {
+            this.rightX = e.detail.x || 0;
           });
         }
 
@@ -173,55 +201,141 @@
         const d = this.data;
         const dtS = dt / 1000;
 
-        // --- SNAP TURN (right stick left/right) ---
+        // --- Snap Turn (Right stick) ---
         const x = this.rightX;
         const TURN_THRESHOLD = 0.78;
 
         if (Math.abs(x) > TURN_THRESHOLD) {
           if (time - this.lastSnapTime > d.snapCooldownMs) {
-            // x>0 = stick right -> rotate right (negative yaw)
-            const sign = x > 0 ? -1 : 1;
+            const sign = x > 0 ? -1 : 1; // right => rotate right
             const rad = THREE.MathUtils.degToRad(d.snapAngle * sign);
             this.el.object3D.rotation.y += rad;
             this.lastSnapTime = time;
           }
         }
 
-        // --- WALK (left stick) ---
-        if (this.teleportActive) return; // während Teleport: kein Walk
+        // --- Walk (Left stick) ---
+        if (!this.teleportActive) {
+          let ax = this.left.x;
+          let ay = this.left.y;
 
-        let ax = this.left.x;
-        let ay = this.left.y;
+          if (Math.abs(ax) < d.deadzone) ax = 0;
+          if (Math.abs(ay) < d.deadzone) ay = 0;
 
-        // deadzone
-        if (Math.abs(ax) < d.deadzone) ax = 0;
-        if (Math.abs(ay) < d.deadzone) ay = 0;
-        if (ax === 0 && ay === 0) return;
+          if (!(ax === 0 && ay === 0)) {
+            const headObj = (this.head && this.head.object3D) ? this.head.object3D : this.el.object3D;
 
-        // Richtung: nach Blickrichtung (Head yaw), ohne Y
-        const headObj = (this.head && this.head.object3D) ? this.head.object3D : this.el.object3D;
+            headObj.getWorldDirection(this._vForward);
+            this._vForward.y = 0;
+            this._vForward.normalize();
 
-        headObj.getWorldDirection(this._vForward);
-        this._vForward.y = 0;
-        this._vForward.normalize();
+            this._vRight.set(-this._vForward.z, 0, this._vForward.x);
 
-        // Right vector (perpendicular)
-        this._vRight.set(-this._vForward.z, 0, this._vForward.x);
+            const moveForward = -ay; // ay<0 is forward
+            const moveStrafe  = ax;
 
-        // Meta Touch: ay < 0 ist "Stick nach vorne"
-        const moveForward = -ay;
-        const moveStrafe  = ax;
+            this._vDelta.set(0,0,0);
+            this._vDelta.addScaledVector(this._vForward, moveForward * d.speed * dtS);
+            this._vDelta.addScaledVector(this._vRight,   moveStrafe  * d.strafeSpeed * dtS);
 
-        this._vDelta.set(0,0,0);
-        this._vDelta.addScaledVector(this._vForward, moveForward * d.speed * dtS);
-        this._vDelta.addScaledVector(this._vRight,   moveStrafe  * d.strafeSpeed * dtS);
+            this.el.object3D.position.add(this._vDelta);
+          }
+        }
 
-        this.el.object3D.position.add(this._vDelta);
-
-        // Y fix (nicht fliegen)
+        // Always clamp to ground + bounds (also after teleport)
         this.el.object3D.position.y = 0;
+        const b = d.bounds;
+        this.el.object3D.position.x = THREE.MathUtils.clamp(this.el.object3D.position.x, -b, b);
+        this.el.object3D.position.z = THREE.MathUtils.clamp(this.el.object3D.position.z, -b, b);
       }
     });
+
+    // -------- In-VR Menu ----------
+    const player = document.getElementById('player');
+    const head   = document.getElementById('head');
+    const menu   = document.getElementById('menu');
+    const rightHand = document.getElementById('rightHand');
+
+    const btnReset = document.getElementById('btnReset');
+    const btnSpeed = document.getElementById('btnSpeed');
+    const btnTurn  = document.getElementById('btnTurn');
+    const txtSpeed = document.getElementById('txtSpeed');
+    const txtTurn  = document.getElementById('txtTurn');
+
+    // State presets
+    const SPEEDS = [0.9, 1.35, 2.0];
+    const TURNS  = [30, 45];
+
+    let speedIdx = 1; // 1.35
+    let turnIdx  = 0; // 30
+
+    function applyTuning(){
+      const speed = SPEEDS[speedIdx];
+      const turn  = TURNS[turnIdx];
+
+      player.setAttribute('quest3-locomotion', 'speed', speed);
+      player.setAttribute('quest3-locomotion', 'strafeSpeed', Math.max(0.75, speed * 0.85));
+      player.setAttribute('quest3-locomotion', 'snapAngle', turn);
+
+      txtSpeed.setAttribute('value', `SPEED ${speed.toFixed(2)}`);
+      txtTurn.setAttribute('value', `TURN ${turn}`);
+    }
+
+    function resetPlayer(){
+      player.object3D.position.set(0,0,0);
+      player.object3D.rotation.set(0,0,0);
+    }
+
+    function placeMenuInFront(){
+      if (!head || !menu) return;
+
+      const headPos = new THREE.Vector3();
+      head.object3D.getWorldPosition(headPos);
+
+      const dir = new THREE.Vector3();
+      head.object3D.getWorldDirection(dir);
+      dir.y = 0; dir.normalize();
+
+      const p = headPos.clone().add(dir.multiplyScalar(0.85));
+      p.y = headPos.y - 0.25;
+
+      menu.setAttribute('position', `${p.x} ${p.y} ${p.z}`);
+
+      // Face the head
+      menu.object3D.lookAt(headPos);
+      menu.object3D.rotation.x = 0;
+      menu.object3D.rotation.z = 0;
+    }
+
+    function toggleMenu(){
+      const vis = menu.getAttribute('visible');
+      if (!vis){
+        placeMenuInFront();
+        menu.setAttribute('visible', true);
+      } else {
+        menu.setAttribute('visible', false);
+      }
+    }
+
+    // Controller buttons: A toggles menu, B resets
+    if (rightHand){
+      rightHand.addEventListener('abuttondown', () => toggleMenu());
+      rightHand.addEventListener('bbuttondown', () => resetPlayer());
+    }
+
+    // Clickable UI
+    btnReset.addEventListener('click', () => resetPlayer());
+    btnSpeed.addEventListener('click', () => {
+      speedIdx = (speedIdx + 1) % SPEEDS.length;
+      applyTuning();
+    });
+    btnTurn.addEventListener('click', () => {
+      turnIdx = (turnIdx + 1) % TURNS.length;
+      applyTuning();
+    });
+
+    // Init tuning values
+    applyTuning();
   </script>
 
 </body>
