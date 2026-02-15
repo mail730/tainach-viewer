@@ -8,6 +8,9 @@
   <!-- A-Frame (WebXR) -->
   <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
 
+  <!-- Teleport (Blink Controls) -->
+  <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script>
+
   <style>
     html,body{margin:0;height:100%;background:#000;font-family:system-ui,-apple-system,Segoe UI,Roboto;}
     .hud{
@@ -30,7 +33,7 @@
     }
     .hint{
       position:fixed; left:10px; right:10px; bottom:10px; z-index:10;
-      background:rgba(0,0,0,.45); color:rgba(255,255,255,.85);
+      background:rgba(0,0,0,.45); color:rgba(255,255,255,.88);
       border:1px solid rgba(255,255,255,.12);
       border-radius:14px; padding:10px 12px; font-size:12px; line-height:1.35;
       backdrop-filter: blur(10px);
@@ -46,7 +49,10 @@
   </div>
 
   <div class="hint">
-    Quest 3: Öffne diese Seite im Meta Quest Browser → ENTER VR. Wenn gefragt wird: Website‑Berechtigungen für „Immersive Web“ erlauben.
+    Quest 3 Controls:<br>
+    • Links Stick = Walk<br>
+    • Rechts Stick = Snap Turn<br>
+    • Links Trigger halten/loslassen = Teleport
   </div>
 
   <a-scene
@@ -59,15 +65,24 @@
       <a-asset-item id="house" src="HAUS_TAINACH.glb"></a-asset-item>
     </a-assets>
 
-    <!-- Panorama (equirectangular 2:1) -->
+    <!-- Panorama -->
     <a-sky src="#pano" rotation="0 -90 0"></a-sky>
 
-    <!-- Licht + Boden als Orientierung -->
-    <a-entity light="type: hemisphere; intensity: 0.9; color: #ffffff; groundColor: #444"></a-entity>
-    <a-entity light="type: directional; intensity: 0.8" position="6 10 6"></a-entity>
-    <a-plane rotation="-90 0 0" width="400" height="400" color="#111"></a-plane>
+    <!-- Licht -->
+    <a-entity light="type: hemisphere; intensity: 0.95; color: #ffffff; groundColor: #444"></a-entity>
+    <a-entity light="type: directional; intensity: 0.85" position="6 10 6"></a-entity>
 
-    <!-- Haus (Yaw Start -90; X “aufgestellt” wie bei dir) -->
+    <!-- Teleport-Boden -->
+    <a-plane
+      id="ground"
+      rotation="-90 0 0"
+      position="0 0 0"
+      width="600"
+      height="600"
+      color="#111">
+    </a-plane>
+
+    <!-- Haus -->
     <a-entity
       gltf-model="#house"
       rotation="90 -90 0"
@@ -75,27 +90,139 @@
       position="0 0 -6">
     </a-entity>
 
-    <!-- Kamera / Rig -->
-    <a-entity id="rig" position="0 0 0">
-      <a-entity camera look-controls position="0 1.6 0"></a-entity>
+    <!-- Player Rig: wird bewegt + teleportiert -->
+    <a-entity id="player" quest3-locomotion="speed: 1.35; strafeSpeed: 1.15; snapAngle: 30; snapCooldownMs: 320;">
+      <!-- Head/Camera -->
+      <a-entity id="head" camera look-controls position="0 1.6 0"></a-entity>
+
+      <!-- Left Hand: Teleport (Trigger) -->
+      <a-entity
+        id="leftHand"
+        meta-touch-controls="hand: left"
+        blink-controls="cameraRig: #player; teleportOrigin: #head; collisionEntities: #ground; button: trigger; snapTurn: false; rotateOnTeleport: true;">
+      </a-entity>
+
+      <!-- Right Hand: Snap Turn (über JS) -->
+      <a-entity
+        id="rightHand"
+        meta-touch-controls="hand: right">
+      </a-entity>
     </a-entity>
 
-    <!-- Controller Ray (optional, später für Teleport/Buttons) -->
-    <a-entity laser-controls="hand: left"></a-entity>
-    <a-entity laser-controls="hand: right"></a-entity>
   </a-scene>
 
   <script>
+    // --------- VR Buttons ----------
     const scene = document.querySelector('a-scene');
-
     document.getElementById('enterVR').addEventListener('click', () => {
-      // muss durch User-Geste ausgelöst werden (Button-Klick passt)
       if (scene && scene.enterVR) scene.enterVR();
     });
-
     document.getElementById('back').addEventListener('click', () => {
       location.href = 'index.html';
     });
+
+    // --------- Locomotion + Snap Turn (Quest 3) ----------
+    AFRAME.registerComponent('quest3-locomotion', {
+      schema: {
+        speed: {default: 1.35},          // m/s
+        strafeSpeed: {default: 1.15},    // m/s
+        deadzone: {default: 0.18},
+        snapAngle: {default: 30},        // degrees
+        snapCooldownMs: {default: 320}
+      },
+
+      init: function () {
+        this.left = {x: 0, y: 0};
+        this.rightX = 0;
+
+        this.teleportActive = false;     // true while left trigger held
+        this.lastSnapTime = 0;
+
+        this.head = this.el.querySelector('#head');
+        this.leftHand  = this.el.querySelector('#leftHand');
+        this.rightHand = this.el.querySelector('#rightHand');
+
+        // LEFT: walk axis + teleport gating (trigger)
+        if (this.leftHand) {
+          this.leftHand.addEventListener('thumbstickmoved', (evt) => {
+            this.left.x = evt.detail.x || 0;
+            this.left.y = evt.detail.y || 0;
+          });
+
+          this.leftHand.addEventListener('triggerdown', () => {
+            this.teleportActive = true;   // Walk aus, damit Teleport sauber bleibt
+          });
+          this.leftHand.addEventListener('triggerup', () => {
+            this.teleportActive = false;
+          });
+        }
+
+        // RIGHT: snap-turn axis
+        if (this.rightHand) {
+          this.rightHand.addEventListener('thumbstickmoved', (evt) => {
+            this.rightX = evt.detail.x || 0;
+          });
+        }
+
+        this._vForward = new THREE.Vector3();
+        this._vRight   = new THREE.Vector3();
+        this._vDelta   = new THREE.Vector3();
+      },
+
+      tick: function (time, dt) {
+        const d = this.data;
+        const dtS = dt / 1000;
+
+        // --- SNAP TURN (right stick left/right) ---
+        const x = this.rightX;
+        const TURN_THRESHOLD = 0.78;
+
+        if (Math.abs(x) > TURN_THRESHOLD) {
+          if (time - this.lastSnapTime > d.snapCooldownMs) {
+            // x>0 = stick right -> rotate right (negative yaw)
+            const sign = x > 0 ? -1 : 1;
+            const rad = THREE.MathUtils.degToRad(d.snapAngle * sign);
+            this.el.object3D.rotation.y += rad;
+            this.lastSnapTime = time;
+          }
+        }
+
+        // --- WALK (left stick) ---
+        if (this.teleportActive) return; // während Teleport: kein Walk
+
+        let ax = this.left.x;
+        let ay = this.left.y;
+
+        // deadzone
+        if (Math.abs(ax) < d.deadzone) ax = 0;
+        if (Math.abs(ay) < d.deadzone) ay = 0;
+        if (ax === 0 && ay === 0) return;
+
+        // Richtung: nach Blickrichtung (Head yaw), ohne Y
+        const headObj = (this.head && this.head.object3D) ? this.head.object3D : this.el.object3D;
+
+        headObj.getWorldDirection(this._vForward);
+        this._vForward.y = 0;
+        this._vForward.normalize();
+
+        // Right vector (perpendicular)
+        this._vRight.set(-this._vForward.z, 0, this._vForward.x);
+
+        // Meta Touch: ay < 0 ist "Stick nach vorne"
+        const moveForward = -ay;
+        const moveStrafe  = ax;
+
+        this._vDelta.set(0,0,0);
+        this._vDelta.addScaledVector(this._vForward, moveForward * d.speed * dtS);
+        this._vDelta.addScaledVector(this._vRight,   moveStrafe  * d.strafeSpeed * dtS);
+
+        this.el.object3D.position.add(this._vDelta);
+
+        // Y fix (nicht fliegen)
+        this.el.object3D.position.y = 0;
+      }
+    });
   </script>
+
 </body>
 </html>
