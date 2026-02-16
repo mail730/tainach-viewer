@@ -25,14 +25,17 @@
       background:#e53935;
       border:1px solid rgba(255,255,255,.28);
       box-shadow: 0 10px 28px rgba(229,57,53,.35);
-      font-weight:800;
+      font-weight:900;
+      letter-spacing:.3px;
     }
     .pill{
       border:1px solid rgba(255,255,255,.14);
       background:rgba(255,255,255,.10);
       border-radius:999px; padding:8px 12px; font-size:13px;
-      color:rgba(255,255,255,.85);
+      color:rgba(255,255,255,.9);
     }
+    .pill.ok{border-color:rgba(46,204,113,.45); background:rgba(46,204,113,.18)}
+    .pill.err{border-color:rgba(231,76,60,.55); background:rgba(231,76,60,.18)}
     .sliderWrap{
       display:flex; align-items:center; gap:8px;
       padding:8px 12px;
@@ -59,14 +62,16 @@
     <button id="enterVR" class="btn primary" type="button">ENTER VR</button>
     <button id="back" class="btn" type="button">← zurück</button>
 
-    <span id="modePill" class="pill">Modus: DROHNE (12m)</span>
-    <button id="modeDrone" class="btn" type="button">Drohne 12m</button>
-    <button id="modeGround" class="btn" type="button">Boden 1.6m</button>
+    <span id="modePill" class="pill">Modus: DROHNE (9.53m)</span>
+    <span id="modelPill" class="pill">Modell: lädt…</span>
 
-    <!-- HTML-Slider (außerhalb VR sichtbar). In VR steuerst du das über A-Menü + Slider. -->
-    <div class="sliderWrap" title="Skybox Radius: kleiner = mehr Parallax-Warp beim Gehen, größer = ruhiger">
+    <button id="modeDrone" class="btn" type="button">Drohne 9.53m</button>
+    <button id="modeGround" class="btn" type="button">Boden 1.6m</button>
+    <button id="resetPos" class="btn" type="button">Reset View</button>
+
+    <div class="sliderWrap" title="Skybox Radius: größer = ruhiger beim Gehen (weniger Warp)">
       <label for="skyR">Sky</label>
-      <input id="skyR" type="range" min="500" max="8000" step="100" value="3000" />
+      <input id="skyR" type="range" min="500" max="12000" step="100" value="3000" />
       <span id="skyRVal">3000</span>
     </div>
   </div>
@@ -78,30 +83,30 @@
   <a-scene xr-mode-ui="enabled: true" renderer="colorManagement: true" background="color: #000">
 
     <a-assets>
-      <!-- Optional: Wenn vorhanden, VR nimmt das leichtere Bild automatisch -->
+      <!-- Optional: falls du irgendwann TAINACH_PANO_VR.jpg (kleiner) hochlädst -->
       <img id="panoImg" src="TAINACH_PANO_VR.jpg" crossorigin="anonymous" />
       <a-asset-item id="house" src="HAUS_TAINACH.glb"></a-asset-item>
     </a-assets>
 
-    <!-- Panorama Sky -->
+    <!-- Panorama -->
     <a-sky id="sky" src="#panoImg" rotation="0 -90 0" geometry="radius: 3000"></a-sky>
 
     <!-- Licht -->
     <a-entity light="type: hemisphere; intensity: 0.95; color: #ffffff; groundColor: #444"></a-entity>
     <a-entity light="type: directional; intensity: 0.85" position="6 10 6"></a-entity>
 
-    <!-- Teleport-Fläche: UNSICHTBAR (kein schwarzer Boden), aber raycastbar -->
+    <!-- Teleport-Fläche: bleibt IMMER bei y=0 (echter Boden) und ist wirklich unsichtbar -->
     <a-plane
       id="ground"
       rotation="-90 0 0"
       position="0 0 0"
-      width="800"
-      height="800"
-      material="transparent: true; opacity: 0.0"
+      width="1200"
+      height="1200"
+      material="color: #000; transparent: true; opacity: 0.0; side: double; depthWrite: false"
       visible="true">
     </a-plane>
 
-    <!-- Haus: auto-ground setzt minY -> 0 -->
+    <!-- Haus -->
     <a-entity
       id="houseEnt"
       gltf-model="#house"
@@ -114,13 +119,13 @@
     <!-- Player Rig -->
     <a-entity
       id="player"
-      position="0 0 0"
-      quest3-locomotion="speed: 1.35; strafeSpeed: 1.15; snapAngle: 30; snapCooldownMs: 320; baseY: 0; bounds: 380;">
+      position="0 0 20"
+      quest3-locomotion="speed: 1.35; strafeSpeed: 1.15; snapAngle: 30; snapCooldownMs: 320; baseY: 0; bounds: 600;">
 
       <!-- Head (Desktop fallback). In VR übernimmt Headset die Pose -->
       <a-entity id="head" camera look-controls position="0 1.6 0"></a-entity>
 
-      <!-- Left Hand: Teleport -->
+      <!-- Left Hand: Teleport (auf ground y=0, Höhe wird nachher fixiert) -->
       <a-entity
         id="leftHand"
         oculus-touch-controls="hand: left"
@@ -142,7 +147,7 @@
       <a-plane width="0.78" height="0.34" color="#111" opacity="0.86"></a-plane>
       <a-text value="VR MENU" color="#fff" position="-0.36 0.13 0.01" width="1.6"></a-text>
 
-      <a-text id="vrModeTxt" value="MODE: DRONE (12m)" color="#ddd" position="-0.36 0.07 0.01" width="1.6"></a-text>
+      <a-text id="vrModeTxt" value="MODE: DRONE (9.53m)" color="#ddd" position="-0.36 0.07 0.01" width="1.6"></a-text>
       <a-text id="vrSkyTxt" value="SKY RADIUS: 3000" color="#ddd" position="-0.36 0.02 0.01" width="1.6"></a-text>
 
       <!-- Mode buttons -->
@@ -168,21 +173,24 @@
   </a-scene>
 
   <script>
-    // ========== Basics ==========
     const scene = document.querySelector('a-scene');
-    document.getElementById('enterVR').addEventListener('click', () => scene?.enterVR?.());
-    document.getElementById('back').addEventListener('click', () => location.href = 'index.html');
+
+    const modelPill = document.getElementById('modelPill');
+    const modePill = document.getElementById('modePill');
 
     const panoImg = document.getElementById('panoImg');
     panoImg.addEventListener('error', () => { panoImg.src = 'TAINACH_PANO.jpg'; });
 
     const sky = document.getElementById('sky');
-    const ground = document.getElementById('ground');
     const player = document.getElementById('player');
     const head = document.getElementById('head');
     const rightHand = document.getElementById('rightHand');
+    const houseEnt = document.getElementById('houseEnt');
 
-    // ========== Auto-ground model ==========
+    document.getElementById('enterVR').addEventListener('click', () => scene?.enterVR?.());
+    document.getElementById('back').addEventListener('click', () => location.href = 'index.html');
+
+    // ===================== Auto-ground =====================
     AFRAME.registerComponent('auto-ground', {
       schema: { offset: {default: 0} },
       init: function(){
@@ -197,7 +205,7 @@
       }
     });
 
-    // ========== Locomotion + Snap Turn ==========
+    // ===================== Locomotion + Snap Turn =====================
     AFRAME.registerComponent('quest3-locomotion', {
       schema: {
         speed: {default: 1.35},
@@ -206,7 +214,7 @@
         snapAngle: {default: 30},
         snapCooldownMs: {default: 320},
         baseY: {default: 0},
-        bounds: {default: 380}
+        bounds: {default: 600}
       },
       init: function () {
         this.left = {x:0,y:0};
@@ -271,7 +279,7 @@
           }
         }
 
-        // Clamp bounds + lock height (also after teleport)
+        // Clamp bounds + lock height (auch nach Teleport)
         const b = d.bounds;
         this.el.object3D.position.x = THREE.MathUtils.clamp(this.el.object3D.position.x, -b, b);
         this.el.object3D.position.z = THREE.MathUtils.clamp(this.el.object3D.position.z, -b, b);
@@ -279,44 +287,75 @@
       }
     });
 
-    // ========== Mode (Drone + Ground) ==========
-    const modePill = document.getElementById('modePill');
-
-    const DRONE_H = 12.0;  // Drohnenhöhe (m) – wenn anders: hier ändern
-    const EYE_H = 1.6;     // Headset/Augenhöhe
+    // ===================== Mode (Drone + Ground) =====================
+    const DRONE_H = 9.53;  // echte Drohnenhöhe (m)
+    const EYE_H = 1.6;
     const DRONE_BASEY = DRONE_H - EYE_H;
 
     let currentMode = 'drone';
+    let startZ = 20; // wird nach model-load automatisch angepasst
+
+    function resetPlayer(){
+      const baseY = (currentMode === 'drone') ? DRONE_BASEY : 0;
+      player.object3D.position.set(0, baseY, startZ);
+      player.object3D.rotation.set(0,0,0);
+    }
 
     function setModeDrone(){
       currentMode = 'drone';
-      ground.setAttribute('position', `0 ${DRONE_BASEY} 0`);
-      player.setAttribute('position', `0 ${DRONE_BASEY} 0`);
       player.setAttribute('quest3-locomotion', 'baseY', DRONE_BASEY);
-      modePill.textContent = `Modus: DROHNE (${DRONE_H.toFixed(0)}m)`;
+      modePill.textContent = `Modus: DROHNE (${DRONE_H.toFixed(2)}m)`;
       syncVrTexts();
+      resetPlayer();
     }
+
     function setModeGround(){
       currentMode = 'ground';
-      ground.setAttribute('position', `0 0 0`);
-      player.setAttribute('position', `0 0 0`);
       player.setAttribute('quest3-locomotion', 'baseY', 0);
       modePill.textContent = 'Modus: BODEN (1.6m)';
       syncVrTexts();
+      resetPlayer();
     }
 
     document.getElementById('modeDrone').addEventListener('click', setModeDrone);
     document.getElementById('modeGround').addEventListener('click', setModeGround);
+    document.getElementById('resetPos').addEventListener('click', resetPlayer);
 
     // Default: Drone (passt zum Drohnen-Pano)
     setModeDrone();
 
-    // ========== Sky Radius Slider (HTML + VR) ==========
+    // ===================== Modell Status + Auto-Startposition =====================
+    modelPill.textContent = 'Modell: lädt…';
+
+    houseEnt.addEventListener('model-loaded', () => {
+      modelPill.textContent = 'Modell: OK';
+      modelPill.classList.remove('err');
+      modelPill.classList.add('ok');
+
+      // Startposition automatisch so wählen, dass du sicher VOR dem Modell stehst
+      const obj = houseEnt.getObject3D('mesh');
+      if (obj) {
+        const box = new THREE.Box3().setFromObject(obj);
+        const size = box.getSize(new THREE.Vector3());
+        const r = Math.max(size.x, size.z) * 1.2; // grobe "Grundradius" Schätzung
+        startZ = Math.max(12, Math.min(80, r * 2.0)); // clamp
+        resetPlayer();
+      }
+    });
+
+    houseEnt.addEventListener('model-error', (e) => {
+      modelPill.textContent = 'Modell: FEHLER';
+      modelPill.classList.remove('ok');
+      modelPill.classList.add('err');
+      console.error('GLB load error:', e?.detail || e);
+    });
+
+    // ===================== Sky Radius Slider (HTML + VR) =====================
     const skyR = document.getElementById('skyR');
     const skyRVal = document.getElementById('skyRVal');
 
     const SKY_MIN = 500;
-    const SKY_MAX = 8000;
+    const SKY_MAX = 12000;
 
     let skyRadius = Number(skyR.value) || 3000;
 
@@ -332,7 +371,7 @@
     skyR.addEventListener('input', () => setSkyRadius(Number(skyR.value)));
     setSkyRadius(skyRadius);
 
-    // ========== VR Menu (A) + VR Slider Drag ==========
+    // ===================== VR Menu (A) + VR Slider Drag =====================
     const vrMenu = document.getElementById('vrMenu');
     const vrModeTxt = document.getElementById('vrModeTxt');
     const vrSkyTxt = document.getElementById('vrSkyTxt');
@@ -345,7 +384,7 @@
     const vrSliderFill = document.getElementById('vrSliderFill');
     const vrSliderKnob = document.getElementById('vrSliderKnob');
 
-    const SLIDER_W = 0.56; // must match vrSliderBar width
+    const SLIDER_W = 0.56;
     const SLIDER_HALF = SLIDER_W / 2;
 
     let menuOpen = false;
@@ -353,7 +392,7 @@
     let lastHitPoint = null;
 
     function syncVrTexts(){
-      vrModeTxt.setAttribute('value', currentMode === 'drone' ? `MODE: DRONE (${DRONE_H.toFixed(0)}m)` : 'MODE: GROUND (1.6m)');
+      vrModeTxt.setAttribute('value', currentMode === 'drone' ? `MODE: DRONE (${DRONE_H.toFixed(2)}m)` : 'MODE: GROUND (1.6m)');
       vrSkyTxt.setAttribute('value', `SKY RADIUS: ${skyRadius}`);
     }
 
@@ -386,29 +425,16 @@
       if (menuOpen) placeMenuInFront();
     }
 
-    // Right controller A = menu
     rightHand.addEventListener('abuttondown', toggleMenu);
 
-    // Buttons inside menu (ray click)
     vrBtnDrone.addEventListener('click', setModeDrone);
     vrBtnGround.addEventListener('click', setModeGround);
-    vrBtnReset.addEventListener('click', () => {
-      // reset to origin of current plane
-      if (currentMode === 'drone'){
-        player.object3D.position.set(0, DRONE_BASEY, 0);
-        player.object3D.rotation.set(0,0,0);
-      } else {
-        player.object3D.position.set(0, 0, 0);
-        player.object3D.rotation.set(0,0,0);
-      }
-    });
+    vrBtnReset.addEventListener('click', resetPlayer);
 
-    // Raycaster intersection tracking (for slider drag)
     rightHand.addEventListener('raycaster-intersection', (evt) => {
       const hits = evt.detail.intersections || [];
       if (!hits.length) return;
 
-      // find intersection with slider bar or knob
       const hit = hits.find(h => h.object && (h.object.el === vrSliderBar || h.object.el === vrSliderKnob));
       if (hit) {
         lastHitPoint = hit.point.clone();
@@ -416,49 +442,33 @@
       }
     });
 
-    // Start dragging when pressing on bar/knob
     vrSliderBar.addEventListener('mousedown', () => { if (menuOpen) draggingSky = true; });
     vrSliderKnob.addEventListener('mousedown', () => { if (menuOpen) draggingSky = true; });
-
-    // Stop dragging on trigger up
     rightHand.addEventListener('triggerup', () => { draggingSky = false; });
 
     function updateSkyFromWorldPoint(worldPoint){
-      // Convert intersection into slider local coordinates
       const p = worldPoint.clone();
       vrSliderBar.object3D.worldToLocal(p);
 
-      // p.x is along slider bar
       const x = THREE.MathUtils.clamp(p.x, -SLIDER_HALF, SLIDER_HALF);
-      const t = (x + SLIDER_HALF) / (SLIDER_W); // 0..1
+      const t = (x + SLIDER_HALF) / (SLIDER_W);
 
       const r = SKY_MIN + t * (SKY_MAX - SKY_MIN);
       setSkyRadius(r);
     }
 
     function updateVrSliderVisual(){
-      // knob x from skyRadius
       const t = (skyRadius - SKY_MIN) / (SKY_MAX - SKY_MIN);
       const x = -SLIDER_HALF + t * SLIDER_W;
 
       vrSliderKnob.setAttribute('position', `${x} 0 0.01`);
 
-      // fill: width from 0..t
       const fillW = Math.max(0.01, t * SLIDER_W);
       const fillX = -SLIDER_HALF + fillW / 2;
 
       vrSliderFill.setAttribute('width', fillW);
       vrSliderFill.setAttribute('position', `${fillX} 0 0.001`);
     }
-
-    // Ensure menu stays in front if user turns head a lot (optional light follow)
-    // If you want it fixed: comment out.
-    scene.addEventListener('tick', () => {
-      if (menuOpen) {
-        // keep distance but allow mild drift correction
-        // (not every frame re-lookAt to avoid jitter)
-      }
-    });
   </script>
 
 </body>
